@@ -63,6 +63,7 @@ func (c *Component) GetData(path string) (map[string]interface{}, error) {
 		params[i] = dbmodel.Escape(keys[i])
 	}
 	query := fmt.Sprintf(c.GetSQL, params...)
+	// log.Println("DEBUG:", query)
 	res, err := dbmodel.DoQuery(query)
 	if err != nil {
 		return ret, err
@@ -73,9 +74,21 @@ func (c *Component) GetData(path string) (map[string]interface{}, error) {
 	return res[0], nil
 }
 
+//Render renders the component
+func (c *Component) Render(templateName string, data map[string]interface{}) (string, error) {
+	tmpl, err := c.TemplateManager.GetTemplate(templateName)
+	if err != nil {
+		return "", err
+	}
+	tmpl.Data = data
+	return c.TemplateManager.Render(&tmpl, "nl")
+}
+
 //Render renders component (prevent closure in loop over templates)
-func (c *Component) handleFunc(templateName string) func(w http.ResponseWriter, r *http.Request) {
+func handleFunc(c Component, templateName string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+
+		log.Println("DEBUG:", templateName)
 		spl := strings.Split(r.URL.Path, "/")
 		if spl[len(spl)-1] == templateName {
 			log.Println("Error: no key for " + templateName)
@@ -107,31 +120,33 @@ func (c *Component) handleFunc(templateName string) func(w http.ResponseWriter, 
 	}
 }
 
-func (c *Component) handleData(w http.ResponseWriter, r *http.Request) {
-	data, err := c.GetData(r.URL.Path)
-	if err != nil {
-		log.Println("Error handle data:", err)
-		http.NotFound(w, r)
-		return
+func handleFuncData(c Component) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		data, err := c.GetData(r.URL.Path)
+		if err != nil {
+			log.Println("Error handle data:", err)
+			http.NotFound(w, r)
+			return
+		}
+		bytes, err := json.Marshal(data)
+		if err != nil {
+			log.Println("Error building json:", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Write(bytes)
 	}
-	bytes, err := json.Marshal(data)
-	if err != nil {
-		log.Println("Error building json:", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.Write(bytes)
 }
 
 //AddRoutes adds routes for html and json endpoints
 func (c *Component) AddRoutes(mx *http.ServeMux) {
 	for name := range c.TemplateManager.GetTemplates() {
-		log.Println("Adding route /" + name + "/")
-		mx.HandleFunc("/"+name+"/", c.handleFunc(name))
+		log.Println("Adding route /component/" + name + "/")
+		mx.HandleFunc("/component/"+name+"/", handleFunc(*c, name)) //TODO inefficient
 	}
 	if c.GetSQL != "" {
 		log.Println("Adding route /data/" + c.Name())
-		mx.HandleFunc("/data/"+c.Name()+"/", c.handleData)
+		mx.HandleFunc("/data/"+c.Name()+"/", handleFuncData(*c)) //TODO inefficient
 	}
 }
