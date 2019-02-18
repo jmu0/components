@@ -1,9 +1,9 @@
 package components
 
-// TODO: nested components
 // TODO: lists
 // TODO: javascript components (ui)
 // TODO: less in components > build
+// TODO: save data
 import (
 	"encoding/json"
 	"errors"
