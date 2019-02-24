@@ -134,6 +134,7 @@ func handleFuncData(c Component) func(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
+		log.Println("Serving data:", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Write(bytes)
 	}
