@@ -33,7 +33,6 @@ func LoadComponent(path string) (Component, error) {
 	c.TemplateManager = templates.TemplateManager{}
 	c.TemplateManager.Preload(path)
 	c.TemplateManager.LocalizationData = make([]map[string]interface{}, 0)
-	c.TemplateManager.Debug = true //TODO make false
 	return c, nil
 }
 
@@ -51,19 +50,26 @@ func (c *Component) Name() string {
 }
 
 //GetData gets data. keys from url path
-func (c *Component) GetData(path string) (map[string]interface{}, error) {
-	var ret = make(map[string]interface{})
+func (c *Component) GetData(path string) ([]map[string]interface{}, error) {
+	var ret = make([]map[string]interface{}, 0)
+	var query, param string
 	if c.GetSQL == "" {
 		return ret, nil
 	}
 	spl := strings.Split(path, "/")
 	keys := strings.Split(spl[len(spl)-1], ":")
-	params := make([]interface{}, len(keys))
+	params := make([]interface{}, 0)
 	for i := range keys {
-		params[i] = dbmodel.Escape(keys[i])
+		param = dbmodel.Escape(strings.TrimSpace(keys[i]))
+		if len(param) > 0 {
+			params = append(params, param)
+		}
 	}
-	query := fmt.Sprintf(c.GetSQL, params...)
-	// log.Println("DEBUG:", query)
+	if len(params) == 0 {
+		query = c.GetSQL
+	} else {
+		query = fmt.Sprintf(c.GetSQL, params...)
+	}
 	res, err := dbmodel.DoQuery(query)
 	if err != nil {
 		return ret, err
@@ -71,7 +77,7 @@ func (c *Component) GetData(path string) (map[string]interface{}, error) {
 	if len(res) == 0 {
 		return ret, errors.New("Data not found")
 	}
-	return res[0], nil
+	return res, nil
 }
 
 //Render renders the component
@@ -87,8 +93,7 @@ func (c *Component) Render(templateName string, data map[string]interface{}) (st
 //Render renders component (prevent closure in loop over templates)
 func handleFunc(c Component, templateName string) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-
-		log.Println("DEBUG:", templateName)
+		var html, itemhtml string
 		spl := strings.Split(r.URL.Path, "/")
 		if spl[len(spl)-1] == templateName {
 			log.Println("Error: no key for " + templateName)
@@ -107,12 +112,27 @@ func handleFunc(c Component, templateName string) func(w http.ResponseWriter, r 
 			http.NotFound(w, r)
 			return
 		}
-		tmpl.Data = data
-		html, err := c.TemplateManager.Render(&tmpl, "nl")
-		if err != nil {
-			log.Println("Error:", err)
-			http.NotFound(w, r)
-			return
+		if len(data) <= 1 {
+			if len(data) == 1 {
+				tmpl.Data = data[0]
+			}
+			html, err = c.TemplateManager.Render(&tmpl, "nl")
+			if err != nil {
+				log.Println("Error:", err)
+				http.NotFound(w, r)
+				return
+			}
+		} else if len(data) > 1 {
+			for i := range data {
+				tmpl.Data = data[i]
+				itemhtml, err = c.TemplateManager.Render(&tmpl, "nl")
+				if err != nil {
+					log.Println("Error:", err)
+					http.NotFound(w, r)
+					return
+				}
+				html += itemhtml
+			}
 		}
 		log.Println("Serving ", r.URL.Path)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")

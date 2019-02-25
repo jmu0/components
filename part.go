@@ -14,7 +14,8 @@ type Part struct {
 //Render renders part (recursive)
 func (p *Part) Render(components map[string]Component, path string) (string, error) {
 	var err error
-
+	var html, itemhtml string
+	var data []map[string]interface{}
 	if cmp, ok := components[p.Name]; ok {
 		var partData = make(map[string]interface{})
 		for _, prt := range p.Components {
@@ -29,15 +30,34 @@ func (p *Part) Render(components map[string]Component, path string) (string, err
 				break
 			}
 		}
-		data, err := cmp.GetData(path)
-		if err != nil {
-			data = partData
+		data, err = cmp.GetData(path)
+		if err != nil || len(data) == 0 {
+			data = make([]map[string]interface{}, 0)
+			data = append(data, partData)
 		} else {
-			for k, v := range partData {
-				data[k] = v
+			for i := range data {
+				for k, v := range partData {
+					data[i][k] = v
+				}
 			}
 		}
-		return cmp.Render(p.Template, data)
+		if len(data) <= 1 {
+			d := make(map[string]interface{})
+			if len(data) == 1 {
+				d = data[0]
+			}
+			html, err = cmp.Render(p.Template, d)
+			return html, err
+		} else if len(data) > 1 {
+			for i := range data {
+				itemhtml, err = cmp.Render(p.Template, data[i])
+				if err != nil {
+					return "", err
+				}
+				html += itemhtml
+			}
+			return html, nil
+		}
 	}
 	return "", errors.New("Component not found for part: " + p.Name)
 }
