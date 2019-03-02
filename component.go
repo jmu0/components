@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/jmu0/orm/dbmodel"
@@ -30,9 +31,17 @@ func LoadComponent(path string) (Component, error) {
 		}
 		c.GetSQL = string(bytes)
 	}
+	lessfiles, err := filepath.Glob(c.Path + "/*.less")
+	if len(lessfiles) > 0 && err == nil {
+		c.LessFiles = lessfiles
+	}
+	jsfiles, err := filepath.Glob(c.Path + "/*.js")
+	if len(jsfiles) > 0 && err == nil {
+		c.JsFiles = jsfiles
+	}
 	c.TemplateManager = templates.TemplateManager{}
 	c.TemplateManager.Preload(path)
-	c.TemplateManager.LocalizationData = make([]map[string]interface{}, 0)
+	c.TemplateManager.LocalizationData = make([]map[string]interface{}, 0) //TODO: localization
 	return c, nil
 }
 
@@ -41,6 +50,8 @@ type Component struct {
 	Path            string
 	GetSQL          string
 	TemplateManager templates.TemplateManager
+	LessFiles       []string
+	JsFiles         []string
 }
 
 //Name returns name from path
