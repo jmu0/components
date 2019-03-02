@@ -111,7 +111,6 @@ func main() {
 			}
 		} else {
 			//concatinate js files into single file
-			//TODO: minify
 			content = ""
 			for _, cmp := range app.Components {
 				if len(cmp.JsFiles) > 0 {
