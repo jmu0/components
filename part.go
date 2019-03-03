@@ -2,6 +2,8 @@ package components
 
 import (
 	"errors"
+	"log"
+	"path/filepath"
 )
 
 //Part stores component names for app struct
@@ -60,4 +62,28 @@ func (p *Part) Render(components map[string]Component, path string) (string, err
 		}
 	}
 	return "", errors.New("Component not found for part: " + p.Name)
+}
+
+//ScriptTags returns html script tags for javascript files
+func (p *Part) ScriptTags(components map[string]Component, debug bool) []string {
+	var ret []string
+	var i int
+	var html string
+	log.Println("DEBUG getting script tags for", p.Name)
+	if cmp, ok := components[p.Name]; ok {
+		for i = 0; i < len(cmp.JsFiles); i++ {
+			html = "<script src=\"/js/"
+			if filepath.Base(cmp.JsFiles[i]) == cmp.Name()+".js" {
+				html += filepath.Base(cmp.JsFiles[i])
+			} else {
+				html += cmp.Name() + "." + filepath.Base(cmp.JsFiles[i])
+			}
+			html += "\"></script>"
+			ret = append(ret, html)
+		}
+	}
+	for _, cmp := range p.Components {
+		ret = append(ret, cmp.ScriptTags(components, true)...)
+	}
+	return ret
 }

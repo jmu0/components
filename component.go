@@ -171,6 +171,12 @@ func handleFuncData(c Component) func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleFuncScript(s string) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		http.ServeFile(w, r, s)
+	}
+}
+
 //AddRoutes adds routes for html and json endpoints
 func (c *Component) AddRoutes(mx *http.ServeMux) {
 	for name := range c.TemplateManager.GetTemplates() {
@@ -180,5 +186,19 @@ func (c *Component) AddRoutes(mx *http.ServeMux) {
 	if c.GetSQL != "" {
 		log.Println("Adding route /data/" + c.Name())
 		mx.HandleFunc("/data/"+c.Name()+"/", handleFuncData(*c)) //TODO inefficient
+	}
+	if len(c.JsFiles) > 0 {
+		var route string
+		var i int
+		for i = 0; i < len(c.JsFiles); i++ {
+			route = "/js/"
+			if filepath.Base(c.JsFiles[i]) == c.Name()+".js" {
+				route = route + filepath.Base(c.JsFiles[i])
+			} else {
+				route = route + c.Name() + "." + filepath.Base(c.JsFiles[i])
+			}
+			log.Println("Adding route " + route)
+			mx.HandleFunc(route, handleFuncScript(c.JsFiles[i]))
+		}
 	}
 }
