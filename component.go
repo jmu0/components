@@ -191,7 +191,7 @@ func (c *Component) AddRoutes(mx *http.ServeMux) {
 		var route string
 		var i int
 		for i = 0; i < len(c.JsFiles); i++ {
-			route = "/js/"
+			route = "/static/js/"
 			if filepath.Base(c.JsFiles[i]) == c.Name()+".js" {
 				route = route + filepath.Base(c.JsFiles[i])
 			} else {

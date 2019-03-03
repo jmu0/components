@@ -72,7 +72,7 @@ func (p *Part) ScriptTags(components map[string]Component, debug bool) []string 
 	log.Println("DEBUG getting script tags for", p.Name)
 	if cmp, ok := components[p.Name]; ok {
 		for i = 0; i < len(cmp.JsFiles); i++ {
-			html = "<script src=\"/js/"
+			html = "<script src=\"/static/js/"
 			if filepath.Base(cmp.JsFiles[i]) == cmp.Name()+".js" {
 				html += filepath.Base(cmp.JsFiles[i])
 			} else {
