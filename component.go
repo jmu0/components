@@ -1,9 +1,10 @@
 package components
 
-// TODO: lists
 // TODO: javascript components (ui)
-// TODO: less in components > build
 // TODO: save data
+// TODO: add example
+// TODO: jwt auth
+// TODO: build tool new (template)
 import (
 	"encoding/json"
 	"errors"
