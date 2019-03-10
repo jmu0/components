@@ -5,16 +5,24 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"path/filepath"
+	"strings"
+
+	"github.com/jmu0/templates"
 )
 
 //App struct for app data
 type App struct {
-	Title          string
-	ComponentsPath string
+	Title          string   `json:"title"`
+	ComponentsPath string   `json:"components_path"`
+	MainPath       string   `json:"main"`
+	Scripts        []string `json:"scripts"`
+	Debug          bool     `json:"debug"`
 	ConfigFile     string
 	Mux            *http.ServeMux
 	Components     map[string]Component
 	Pages          []Page
+	MainTemplate   *templates.Template
 }
 
 //Init initializes the app
@@ -31,6 +39,16 @@ func (a *App) Init() error {
 	if err != nil {
 		return err
 	}
+	var main = templates.Template{}
+	main.Data = make(map[string]interface{})
+	err = main.Load(a.ComponentsPath + "/" + a.MainPath)
+	if err != nil {
+		return err
+	}
+	main.Data["scripts"] = strings.Join(a.ScriptTags(), "\n")
+	main.Data["title"] = a.Title
+	a.MainTemplate = &main
+	// log.Println("DEBUG:", main.Data["scripts"])
 	return nil
 }
 
@@ -69,12 +87,15 @@ func (a *App) LoadComponents() error {
 func (a *App) handleFunc(page Page) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Rendering", page.Route)
-		html, err := page.Render(a.Components, r.URL.Path)
+		content, err := page.Render(a.Components, r.URL.Path)
 		if err != nil {
 			log.Println("ERROR:", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+		var tm = templates.TemplateManager{}
+		a.MainTemplate.Data["content"] = content
+		html, err := tm.Render(a.MainTemplate, "nl") //TODO: localize
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Write([]byte(html))
 	}
@@ -95,5 +116,55 @@ func (a *App) AddRoutes() error {
 	for _, comp := range a.Components {
 		comp.AddRoutes(a.Mux)
 	}
+	//Add route for templates
+	log.Println("Adding route /component/templates")
+	a.Mux.HandleFunc("/component/templates", func(w http.ResponseWriter, r *http.Request) {
+		tmpls := make(map[string]string)
+		for _, comp := range a.Components {
+			for tmplname := range comp.TemplateManager.GetTemplates() {
+				tmpl, err := comp.TemplateManager.GetTemplate(tmplname)
+				if err == nil {
+					tmpls[tmplname] = tmpl.HTML
+				}
+			}
+		}
+		bytes, err := json.Marshal(tmpls)
+		if err != nil {
+			http.Error(w, "Internal server error", http.StatusInternalServerError)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Write(bytes)
+	})
 	return nil
+}
+
+//ScriptTags returns html script tags for javascript files
+func (a *App) ScriptTags() []string {
+	var ret []string
+	var i int
+	var html string
+	if a.Debug == true {
+		log.Println("TODO:scripts seperate files")
+	} else {
+		log.Println("TODO: single file")
+	}
+	for _, scriptPath := range a.Scripts {
+		ret = append(ret, "<script src=\""+scriptPath+"\"></script>")
+
+	}
+	for _, cmp := range a.Components {
+		// log.Println("DEBUG getting script tags for", name)
+		for i = 0; i < len(cmp.JsFiles); i++ {
+			html = "<script src=\"/static/js/"
+			if filepath.Base(cmp.JsFiles[i]) == cmp.Name()+".js" {
+				html += filepath.Base(cmp.JsFiles[i])
+			} else {
+				html += cmp.Name() + "." + filepath.Base(cmp.JsFiles[i])
+			}
+			html += "\"></script>"
+			ret = append(ret, html)
+		}
+	}
+	return ret
 }

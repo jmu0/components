@@ -1,0 +1,35 @@
+{
+    "title": "ExampleApp",
+    "debug": true,
+    "components_path": "components",
+    "scripts": [
+        "/static/ui/js/ui.js",
+        "/static/ui/js/compatibility.js",
+        "/static/ui/js/ajax.js",
+        "/static/ui/js/router.js",
+        "/static/ui/js/components.js",
+        "/static/ui/js/docs.js",
+        "/static/ui/js/jwt.js",
+        "/static/ui/js/model.js",
+        "/static/ui/js/events.js",
+        "/static/ui/js/nav.js",
+        "/static/ui/js/infinite.scroll.js",
+        "/static/ui/js/templates.js"
+    ],
+    "main": "main.html",
+    "pages": [
+        {
+            "route": "/",
+            "components": []
+        },
+        {
+            "route": "/example",
+            "components": [
+                {
+                    "name": "example",
+                    "template": "example"
+                }
+            ]
+        }
+    ]
+}

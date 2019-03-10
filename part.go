@@ -2,21 +2,20 @@ package components
 
 import (
 	"errors"
-	"log"
-	"path/filepath"
+	"strings"
 )
 
 //Part stores component names for app struct
 type Part struct {
-	Name       string
-	Template   string
-	Components []Part
+	Name       string `json:"name"`
+	Template   string `json:"template"`
+	Components []Part `json:"components"`
 }
 
 //Render renders part (recursive)
 func (p *Part) Render(components map[string]Component, path string) (string, error) {
 	var err error
-	var html, itemhtml string
+	var html, itemhtml, cmpName string
 	var data []map[string]interface{}
 	if cmp, ok := components[p.Name]; ok {
 		var partData = make(map[string]interface{})
@@ -49,7 +48,6 @@ func (p *Part) Render(components map[string]Component, path string) (string, err
 				d = data[0]
 			}
 			html, err = cmp.Render(p.Template, d)
-			return html, err
 		} else if len(data) > 1 {
 			for i := range data {
 				itemhtml, err = cmp.Render(p.Template, data[i])
@@ -58,32 +56,10 @@ func (p *Part) Render(components map[string]Component, path string) (string, err
 				}
 				html += itemhtml
 			}
-			return html, nil
 		}
+		cmpName = strings.ToLower(p.Name)
+		html = "<" + cmpName + " data-component='" + cmpName + "'>" + html + "</" + cmpName + ">"
+		return html, err
 	}
 	return "", errors.New("Component not found for part: " + p.Name)
-}
-
-//ScriptTags returns html script tags for javascript files
-func (p *Part) ScriptTags(components map[string]Component, debug bool) []string {
-	var ret []string
-	var i int
-	var html string
-	log.Println("DEBUG getting script tags for", p.Name)
-	if cmp, ok := components[p.Name]; ok {
-		for i = 0; i < len(cmp.JsFiles); i++ {
-			html = "<script src=\"/static/js/"
-			if filepath.Base(cmp.JsFiles[i]) == cmp.Name()+".js" {
-				html += filepath.Base(cmp.JsFiles[i])
-			} else {
-				html += cmp.Name() + "." + filepath.Base(cmp.JsFiles[i])
-			}
-			html += "\"></script>"
-			ret = append(ret, html)
-		}
-	}
-	for _, cmp := range p.Components {
-		ret = append(ret, cmp.ScriptTags(components, true)...)
-	}
-	return ret
 }

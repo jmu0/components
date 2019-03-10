@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>${{title}}</title>
+    <link rel="stylesheet" type="text/css" href="/static/css/style.css">
+    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+        <script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+        <script src="https://oss.maxcdn.com/libs/respond.js/1.3.0/respond.min.js"></script>
+        <![endif]-->
+
+</head>
+
+<body>
+    <header>
+        <span class='title'>${{title}}</span>
+        <nav>
+            <button class='toggle visible-sm'><i class='fa fa-bars'></i></button>
+            <ul class='hidden-sm'>
+                <li><a href='/' class='een'><i class='fa fa-home'></i>Home</a></li>
+                <li><a href='/example'>Example</a></li>
+            </ul>
+        </nav>
+    </header>
+    <main>${{content}}</main>
+    <footer>
+        <span class="status"></span>
+    </footer>
+    ${{scripts}}
+</body>
+
+</html>

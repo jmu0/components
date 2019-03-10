@@ -21,12 +21,12 @@ func main() {
 	}
 	err = app.LoadConfig()
 	if err != nil {
-		fmt.Println("ERROR:", err)
+		fmt.Println("ERROR LoadConfig:", err)
 		return
 	}
 	err = app.LoadComponents()
 	if err != nil {
-		fmt.Println("ERROR:", err)
+		fmt.Println("ERROR LoadComponents:", err)
 		return
 	}
 	if len(os.Args) == 1 {

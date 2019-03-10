@@ -178,11 +178,27 @@ func handleFuncScript(s string) func(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func handleFuncTemplate(c Component, name string) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		tmpl, err := c.TemplateManager.GetTemplate(name)
+		if err != nil {
+			log.Println("ERROR:", err)
+			http.NotFound(w, r)
+			return
+		}
+		log.Println("Serving template:", name)
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte(tmpl.HTML))
+	}
+}
+
 //AddRoutes adds routes for html and json endpoints
 func (c *Component) AddRoutes(mx *http.ServeMux) {
 	for name := range c.TemplateManager.GetTemplates() {
 		log.Println("Adding route /component/" + name + "/")
 		mx.HandleFunc("/component/"+name+"/", handleFunc(*c, name)) //TODO inefficient
+		log.Println("Adding route /static/templates/" + name + ".html")
+		mx.HandleFunc("/static/templates/"+name+".html", handleFuncTemplate(*c, name))
 	}
 	if c.GetSQL != "" {
 		log.Println("Adding route /data/" + c.Name())
