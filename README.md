@@ -11,7 +11,6 @@
 - ComponentPath: load components in this path
 - Scripts: array of scripts to load. append to body when in debug mode
     TODO: concatenate, minify and gzip scripts on server start, serve single js file.
-- TODO: add examples / template. (TODO: build tool action: build new [name])
 
 ## components
 - load component from path

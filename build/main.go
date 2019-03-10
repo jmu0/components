@@ -12,29 +12,18 @@ import (
 	"github.com/tdewolff/minify/js"
 )
 
+var app components.App
+
 func main() {
 	var content string
 	var err error
-	conf := "app.json"
-	app := components.App{
-		ConfigFile: conf,
-	}
-	err = app.LoadConfig()
-	if err != nil {
-		fmt.Println("ERROR LoadConfig:", err)
-		return
-	}
-	err = app.LoadComponents()
-	if err != nil {
-		fmt.Println("ERROR LoadComponents:", err)
-		return
-	}
 	if len(os.Args) == 1 {
 		printHelp()
 		return
 	}
 	switch os.Args[1] {
 	case "less":
+		loadApp()
 		var i, j int
 		outPath := "static/css/components.less"
 		mainPath := "main.less"
@@ -64,6 +53,7 @@ func main() {
 			fmt.Println("ERROR:", err)
 		}
 	case "js":
+		loadApp()
 		outPath := "static/js/"
 		var debug = false
 		var j int
@@ -152,4 +142,23 @@ func printHelp() {
 	fmt.Println("Invalid Arguments. Usage:")
 	fmt.Println("Build .less import file for all components: build less [<outfile>] [<mainfile>]")
 	fmt.Println("Build .js file from components: build js [outfile | debug] [debug]")
+	fmt.Println("Create new project from template: build new <name>")
+}
+func loadApp() {
+	var err error
+	conf := "app.json"
+	app := components.App{
+		ConfigFile: conf,
+	}
+	err = app.LoadConfig()
+	if err != nil {
+		fmt.Println("ERROR LoadConfig:", err)
+		os.Exit(1)
+
+	}
+	err = app.LoadComponents()
+	if err != nil {
+		fmt.Println("ERROR LoadComponents:", err)
+		os.Exit(1)
+	}
 }
