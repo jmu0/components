@@ -1,0 +1,9 @@
+- route: example
+  type: query
+  auth: false
+  methods: GET
+  sql: select * from Assortiment.Plant where Naamcode="%s"
+- route: Assortiment/Plant
+  type: rest
+  auth: true
+  methods: GET,HEAD,POST,DELETE

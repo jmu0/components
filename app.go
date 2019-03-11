@@ -117,7 +117,7 @@ func (a *App) AddRoutes() error {
 	}
 	//Add routes for components, data and scripts
 	for _, comp := range a.Components {
-		comp.AddRoutesData(a.Mux)
+		comp.AddRoutesData(a.Mux) //TODO to api
 		if a.Debug == true {
 			comp.AddRoutesScripts(a.Mux)
 		}
@@ -153,6 +153,10 @@ func (a *App) AddRoutes() error {
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Write(bytes)
 	})
+
+	//Add API routes
+	AddAPIRoutes(a.Mux)
+
 	return nil
 }
 
@@ -215,39 +219,3 @@ func loadJsFile(path string) []byte {
 	}
 	return []byte(minified)
 }
-
-// func loadJsFileFout(path string) []byte {
-// 	var ret []byte
-// 	var index int
-// 	var line string
-// 	file, err := os.Open(path)
-// 	if err != nil {
-// 		log.Println("ERROR reading file:", err)
-// 		return []byte("")
-// 	}
-// 	defer file.Close()
-
-// 	scanner := bufio.NewScanner(file)
-// 	for scanner.Scan() {
-// 		line = strings.TrimSpace(scanner.Text())
-// 		if len(line) > 0 { //no empty lines
-// 			if (len(line) > 1 && line[0:2] != "//" && line[0:2] != "/*") && line[0] != '*' { //no comments
-// 				index = strings.Index(line, " //")
-// 				if index > -1 {
-// 					line = strings.TrimSpace(line[:index])
-// 				}
-// 				line = strings.TrimSuffix(line, "\n")
-// 				if line[len(line)-1] == '}' {
-// 					line += ";"
-// 				}
-// 				ret = append(ret, []byte(line)...)
-// 			}
-// 		}
-// 	}
-//
-// 	if err := scanner.Err(); err != nil {
-// 		log.Println("ERROR reading file:", err)
-// 		return []byte("")
-// 	}
-// 	return ret
-// }

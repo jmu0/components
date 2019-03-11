@@ -19,16 +19,24 @@ import (
 
 //LoadComponent loads component from files in <path>
 func LoadComponent(path string) (Component, error) {
+	// log.Println("Loading component from", path)
 	var c = Component{
 		Path: path,
 	}
-	if _, err := os.Stat(path + "/get.sql"); err == nil {
+	if _, err := os.Stat(path + "/get.sql"); err == nil { //TODO remove, use api
 		bytes, err := ioutil.ReadFile(path + "/get.sql")
 		if err != nil {
 			return c, err
 		}
 		c.GetSQL = string(bytes)
 	}
+	if _, err := os.Stat(path + "/api.yml"); err == nil {
+		err = LoadRoutesYaml(path + "/api.yml")
+		if err != nil {
+			return c, err
+		}
+	}
+
 	lessfiles, err := filepath.Glob(c.Path + "/*.less")
 	if len(lessfiles) > 0 && err == nil {
 		c.LessFiles = lessfiles
@@ -46,7 +54,7 @@ func LoadComponent(path string) (Component, error) {
 //Component struct
 type Component struct {
 	Path            string
-	GetSQL          string
+	GetSQL          string //TODO use api
 	TemplateManager templates.TemplateManager
 	LessFiles       []string
 	JsFiles         []string
@@ -60,6 +68,7 @@ func (c *Component) Name() string {
 
 //GetData gets data. keys from url path
 func (c *Component) GetData(path string) ([]map[string]interface{}, error) {
+	//TODO: to api
 	var ret = make([]map[string]interface{}, 0)
 	var query, param string
 	if c.GetSQL == "" {
