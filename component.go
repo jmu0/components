@@ -189,8 +189,8 @@ func handleFuncTemplate(c Component, name string) func(w http.ResponseWriter, r 
 	}
 }
 
-//AddRoutes adds routes for html and json endpoints
-func (c *Component) AddRoutes(mx *http.ServeMux) {
+//AddRoutesData adds routes for html and json endpoints
+func (c *Component) AddRoutesData(mx *http.ServeMux) {
 	for name := range c.TemplateManager.GetTemplates() {
 		log.Println("Adding route /component/" + name + "/")
 		mx.HandleFunc("/component/"+name+"/", handleFunc(*c, name)) //TODO inefficient
@@ -201,6 +201,11 @@ func (c *Component) AddRoutes(mx *http.ServeMux) {
 		log.Println("Adding route /data/" + c.Name())
 		mx.HandleFunc("/data/"+c.Name()+"/", handleFuncData(*c)) //TODO inefficient
 	}
+
+}
+
+//AddRoutesScripts adds Routes for js files
+func (c *Component) AddRoutesScripts(mx *http.ServeMux) {
 	if len(c.JsFiles) > 0 {
 		var route string
 		var i int

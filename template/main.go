@@ -31,6 +31,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	log.Println("DEBUG:", app.Debug)
 	log.Println("Listening on port", listenAddr)
 	log.Fatal(http.ListenAndServe(listenAddr, mx))
 }

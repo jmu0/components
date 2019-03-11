@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"github.com/jmu0/templates"
+	"github.com/tdewolff/minify"
+	"github.com/tdewolff/minify/js"
 )
 
 //App struct for app data
@@ -23,6 +25,7 @@ type App struct {
 	Components     map[string]Component
 	Pages          []Page
 	MainTemplate   *templates.Template
+	JsCache        []byte
 }
 
 //Init initializes the app
@@ -112,10 +115,23 @@ func (a *App) AddRoutes() error {
 
 		a.Mux.HandleFunc(page.Route, a.handleFunc(page))
 	}
-	//Add routes for components and data
+	//Add routes for components, data and scripts
 	for _, comp := range a.Components {
-		comp.AddRoutes(a.Mux)
+		comp.AddRoutesData(a.Mux)
+		if a.Debug == true {
+			comp.AddRoutesScripts(a.Mux)
+		}
 	}
+	if a.Debug == false {
+		a.LoadScriptFiles()
+		log.Println("Adding route /static/js/" + a.Title + ".js")
+		a.Mux.HandleFunc("/static/js/"+a.Title+".js", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-control", "max-age=90")
+			w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+			w.Write(a.JsCache)
+		})
+	}
+
 	//Add route for templates
 	log.Println("Adding route /component/templates")
 	a.Mux.HandleFunc("/component/templates", func(w http.ResponseWriter, r *http.Request) {
@@ -133,6 +149,7 @@ func (a *App) AddRoutes() error {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+		w.Header().Set("Cache-control", "max-age=90")
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Write(bytes)
 	})
@@ -145,26 +162,92 @@ func (a *App) ScriptTags() []string {
 	var i int
 	var html string
 	if a.Debug == true {
-		log.Println("TODO:scripts seperate files")
-	} else {
-		log.Println("TODO: single file")
-	}
-	for _, scriptPath := range a.Scripts {
-		ret = append(ret, "<script src=\""+scriptPath+"\"></script>")
-
-	}
-	for _, cmp := range a.Components {
-		// log.Println("DEBUG getting script tags for", name)
-		for i = 0; i < len(cmp.JsFiles); i++ {
-			html = "<script src=\"/static/js/"
-			if filepath.Base(cmp.JsFiles[i]) == cmp.Name()+".js" {
-				html += filepath.Base(cmp.JsFiles[i])
-			} else {
-				html += cmp.Name() + "." + filepath.Base(cmp.JsFiles[i])
-			}
-			html += "\"></script>"
-			ret = append(ret, html)
+		for _, scriptPath := range a.Scripts {
+			ret = append(ret, "<script src=\""+scriptPath+"\"></script>")
 		}
+		for _, cmp := range a.Components {
+			// log.Println("DEBUG getting script tags for", name)
+			for i = 0; i < len(cmp.JsFiles); i++ {
+				html = "<script src=\"/static/js/"
+				if filepath.Base(cmp.JsFiles[i]) == cmp.Name()+".js" {
+					html += filepath.Base(cmp.JsFiles[i])
+				} else {
+					html += cmp.Name() + "." + filepath.Base(cmp.JsFiles[i])
+				}
+				html += "\"></script>"
+				ret = append(ret, html)
+			}
+		}
+	} else {
+		ret = append(ret, "<script src=\"/static/js/"+a.Title+".js\"></script>")
 	}
 	return ret
 }
+
+//LoadScriptFiles loads and crushes js files
+func (a *App) LoadScriptFiles() {
+
+	a.JsCache = []byte("")
+	for _, scriptPath := range a.Scripts {
+		// log.Println("Loading Javascript:", scriptPath)
+		if scriptPath[0] == '/' {
+			scriptPath = scriptPath[1:]
+		}
+		a.JsCache = append(a.JsCache, loadJsFile(scriptPath)...)
+	}
+	var i int
+	for _, cmp := range a.Components {
+		for i = 0; i < len(cmp.JsFiles); i++ {
+			// log.Println("Loading Javascript:", cmp.JsFiles[i])
+			a.JsCache = append(a.JsCache, loadJsFile(cmp.JsFiles[i])...)
+		}
+	}
+}
+
+func loadJsFile(path string) []byte {
+	bytes, err := ioutil.ReadFile(path)
+	m := minify.New()
+	m.AddFunc("text/javascript", js.Minify)
+	minified, err := m.String("text/javascript", string(bytes))
+	if err != nil {
+		minified = string(bytes)
+		log.Println("ERROR minifying js file:", err)
+	}
+	return []byte(minified)
+}
+
+// func loadJsFileFout(path string) []byte {
+// 	var ret []byte
+// 	var index int
+// 	var line string
+// 	file, err := os.Open(path)
+// 	if err != nil {
+// 		log.Println("ERROR reading file:", err)
+// 		return []byte("")
+// 	}
+// 	defer file.Close()
+
+// 	scanner := bufio.NewScanner(file)
+// 	for scanner.Scan() {
+// 		line = strings.TrimSpace(scanner.Text())
+// 		if len(line) > 0 { //no empty lines
+// 			if (len(line) > 1 && line[0:2] != "//" && line[0:2] != "/*") && line[0] != '*' { //no comments
+// 				index = strings.Index(line, " //")
+// 				if index > -1 {
+// 					line = strings.TrimSpace(line[:index])
+// 				}
+// 				line = strings.TrimSuffix(line, "\n")
+// 				if line[len(line)-1] == '}' {
+// 					line += ";"
+// 				}
+// 				ret = append(ret, []byte(line)...)
+// 			}
+// 		}
+// 	}
+//
+// 	if err := scanner.Err(); err != nil {
+// 		log.Println("ERROR reading file:", err)
+// 		return []byte("")
+// 	}
+// 	return ret
+// }
