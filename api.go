@@ -1,6 +1,9 @@
 package components
 
 import (
+	"encoding/json"
+	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -19,7 +22,8 @@ type Route struct {
 	SQL     string `yaml:"sql"`
 }
 
-var routes []Route
+var routes map[string]Route
+var apiURL = "/api"
 
 //LoadRoutesYaml loads routes from yaml file and adds to routes slice
 func LoadRoutesYaml(path string) error {
@@ -33,38 +37,98 @@ func LoadRoutesYaml(path string) error {
 	if err != nil {
 		return err
 	}
-	routes = append(routes, rts...)
+	if routes == nil {
+		routes = make(map[string]Route)
+	}
+	for _, rt := range rts {
+		routes[rt.Route] = rt
+	}
 	return nil
 }
 
 //AddAPIRoutes creates handlers for routes
 func AddAPIRoutes(mx *http.ServeMux) {
 	for _, r := range routes {
-		log.Println("TODO: create route:", r)
+		switch r.Type {
+		case "query":
+			log.Println("Adding route /api/" + r.Route + "/ (" + r.Type + ")")
+			mx.HandleFunc("/api/"+r.Route+"/", queryHandler(r))
+		case "rest":
+			log.Println("Adding route /api/" + r.Route + "/ (" + r.Type + ")")
+			mx.HandleFunc("/api/"+r.Route+"/", restHandler(r))
+		default:
+			log.Println("ERROR unknown route type:", r.Type)
+		}
 	}
 }
 
-//RestHandler handler for rest api requests
-func RestHandler() func(w http.ResponseWriter, r *http.Request) {
-	var dataURL string
-	var allowed = make(map[string]string)
+//restHandler handler for rest api requests
+func restHandler(route Route) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var allow = false
-		var reqPath = strings.Replace(r.URL.Path, dataURL, "", 1)
-		var method = r.Method
-		for path, methods := range allowed {
-			if len(path) < len(reqPath) && path == reqPath[:len(path)] {
-				if strings.Contains(strings.ToLower(methods), strings.ToLower(method)) {
-					allow = true
-					break
-				}
-			}
+		if strings.Contains(strings.ToLower(route.Methods), strings.ToLower(r.Method)) {
+			allow = true
 		}
+		//TODO: jwt auth
 		if allow == true {
-			dbmodel.HandleREST(dataURL, w, r)
+			dbmodel.HandleREST(apiURL, w, r)
 		} else {
-			log.Println("NOT ALLOWED:", method, reqPath)
-			http.NotFound(w, r)
+			log.Println("Method not allowed:", r.Method, r.URL.Path)
+			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+			// http.NotFound(w, r)
 		}
 	}
+}
+
+//queryHandler creates handler func for query route
+func queryHandler(route Route) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		//TODO: jwt auth
+		data, err := route.GetData(r.URL.Path)
+		if err != nil {
+			log.Println("Error handle data:", err)
+			http.NotFound(w, r)
+			return
+		}
+		bytes, err := json.Marshal(data)
+		if err != nil {
+			log.Println("Error building json:", err)
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		log.Println("Serving data:", r.URL.Path)
+		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Write(bytes)
+	}
+}
+
+//GetData gets data. keys from url path
+func (r *Route) GetData(path string) ([]map[string]interface{}, error) {
+	var ret = make([]map[string]interface{}, 0)
+	var query, param string
+	if r.SQL == "" {
+		return ret, nil
+	}
+	spl := strings.Split(path, "/")
+	keys := strings.Split(spl[len(spl)-1], ":")
+	params := make([]interface{}, 0)
+	for i := range keys {
+		param = dbmodel.Escape(strings.TrimSpace(keys[i]))
+		if len(param) > 0 {
+			params = append(params, param)
+		}
+	}
+	if len(params) == 0 {
+		query = r.SQL
+	} else {
+		query = fmt.Sprintf(r.SQL, params...)
+	}
+	res, err := dbmodel.DoQuery(query)
+	if err != nil {
+		return ret, err
+	}
+	if len(res) == 0 {
+		return ret, errors.New("Data not found")
+	}
+	return res, nil
 }

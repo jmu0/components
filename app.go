@@ -75,6 +75,7 @@ func (a *App) LoadComponents() error {
 	if err != nil {
 		return err
 	}
+	//TODO: components in folders (recursive)
 	for _, file := range files {
 		if file.IsDir() {
 			c, err := LoadComponent(a.ComponentsPath + "/" + file.Name())
@@ -89,6 +90,10 @@ func (a *App) LoadComponents() error {
 
 func (a *App) handleFunc(page Page) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if page.Auth == true {
+			//TODO: jwt auth
+			log.Println("DEBUG: Check auth..")
+		}
 		log.Println("Rendering", page.Route)
 		content, err := page.Render(a.Components, r.URL.Path)
 		if err != nil {

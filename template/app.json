@@ -21,11 +21,29 @@
             "components": []
         },
         {
+            "route": "/login",
+            "components": [
+                {
+                    "name": "login"
+                }
+            ]
+        },
+        {
             "route": "/example",
+            "auth": true,
             "components": [
                 {
                     "name": "example",
                     "template": "example"
+                }
+            ]
+        },
+        {
+            "route": "/example1",
+            "components": [
+                {
+                    "name": "example1",
+                    "template": "example1"
                 }
             ]
         }

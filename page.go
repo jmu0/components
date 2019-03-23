@@ -3,6 +3,7 @@ package components
 //Page struct for page data
 type Page struct {
 	Route      string `json:"route"`
+	Auth       bool   `json:"auth"`
 	Components []Part `json:"components"`
 }
 
