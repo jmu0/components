@@ -2,7 +2,7 @@
   type: query
   auth: false
   methods: GET
-  sql: select * from Assortiment.Maat where Maatcode="%s"
+  sql: select * from Assortiment.Plant where Naamcode="%s"
 - route: Assortiment/Maat
   type: rest
   auth: true

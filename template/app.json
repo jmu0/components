@@ -30,7 +30,7 @@
         },
         {
             "route": "/example",
-            "auth": true,
+            "auth": false,
             "components": [
                 {
                     "name": "example",

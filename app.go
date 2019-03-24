@@ -57,6 +57,7 @@ func (a *App) Init() error {
 
 //LoadConfig loads json config file
 func (a *App) LoadConfig() error {
+	//TODO: load json or yaml format
 	bytes, err := ioutil.ReadFile(a.ConfigFile)
 	if err != nil {
 		return err
