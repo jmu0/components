@@ -1,0 +1,30 @@
+title: ExampleApp
+components_path: components
+debug: true
+scripts:
+    - /static/ui/js/ui.js
+    - /static/ui/js/compatibility.js
+    - /static/ui/js/ajax.js
+    - /static/ui/js/router.js
+    - /static/ui/js/components.js
+    - /static/ui/js/jwt.js
+    - /static/ui/js/model.js
+    - /static/ui/js/events.js
+    - /static/ui/js/nav.js
+    - /static/ui/js/templates.js
+main: main.html
+pages:
+    - route: /
+      components:
+    - route: /login
+      components:
+          - name: login
+    - route: /example
+      auth: false
+      components:
+          - name: example
+            template: example
+    - route: /example1
+      components:
+          - name: example1
+            template: example1
