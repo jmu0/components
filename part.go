@@ -2,6 +2,7 @@ package components
 
 import (
 	"errors"
+	"log"
 	"strings"
 )
 
@@ -35,6 +36,9 @@ func (p *Part) Render(components map[string]Component, path string) (string, err
 		if err != nil || len(data) == 0 {
 			data = make([]map[string]interface{}, 0)
 			data = append(data, partData)
+			if err != nil {
+				log.Println("(part.Render):", err)
+			}
 		} else {
 			for i := range data {
 				for k, v := range partData {

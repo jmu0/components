@@ -9,6 +9,8 @@ import (
 	"net/http"
 	"strings"
 
+	"git.muysers.nl/jmu0/jwt"
+
 	"github.com/jmu0/orm/dbmodel"
 	"gopkg.in/yaml.v2"
 )
@@ -69,7 +71,12 @@ func restHandler(route Route) func(w http.ResponseWriter, r *http.Request) {
 		if strings.Contains(strings.ToLower(route.Methods), strings.ToLower(r.Method)) {
 			allow = true
 		}
-		//TODO: jwt auth
+		if route.Auth == true {
+			if jwt.Authenticated(r) == false {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+		}
 		if allow == true {
 			dbmodel.HandleREST(apiURL, w, r)
 		} else {
@@ -83,7 +90,12 @@ func restHandler(route Route) func(w http.ResponseWriter, r *http.Request) {
 //queryHandler creates handler func for query route
 func queryHandler(route Route) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		//TODO: jwt auth
+		if route.Auth == true {
+			if jwt.Authenticated(r) == false {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+		}
 		data, err := route.GetData(r.URL.Path)
 		if err != nil {
 			log.Println("Error handle data:", err)

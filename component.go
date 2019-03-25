@@ -1,12 +1,9 @@
 package components
 
-// TODO: save data
-// TODO: jwt auth
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -19,16 +16,8 @@ import (
 
 //LoadComponent loads component from files in <path>
 func LoadComponent(path string) (Component, error) {
-	// log.Println("Loading component from", path)
 	var c = Component{
 		Path: path,
-	}
-	if _, err := os.Stat(path + "/get.sql"); err == nil { //TODO remove, use api
-		bytes, err := ioutil.ReadFile(path + "/get.sql")
-		if err != nil {
-			return c, err
-		}
-		c.GetSQL = string(bytes)
 	}
 	if _, err := os.Stat(path + "/api.yml"); err == nil {
 		err = LoadRoutesYaml(path + "/api.yml")
@@ -54,7 +43,6 @@ func LoadComponent(path string) (Component, error) {
 //Component struct
 type Component struct {
 	Path            string
-	GetSQL          string //TODO use api
 	TemplateManager templates.TemplateManager
 	LessFiles       []string
 	JsFiles         []string
@@ -63,16 +51,22 @@ type Component struct {
 //Name returns name from path
 func (c *Component) Name() string {
 	spl := strings.Split(c.Path, "/")
+	// return strings.ToLower(strings.Join(spl[1:], "/"))
 	return strings.ToLower(spl[len(spl)-1])
 }
 
 //GetData gets data. keys from url path
 func (c *Component) GetData(path string) ([]map[string]interface{}, error) {
-	//TODO: to api
 	var ret = make([]map[string]interface{}, 0)
 	var query, param string
-	if c.GetSQL == "" {
-		return ret, nil
+	if route, ok := routes[c.Name()]; ok {
+		if route.Type == "query" && len(route.SQL) > 0 {
+			query = route.SQL
+		} else {
+			return ret, errors.New("No query found in route: " + route.Route)
+		}
+	} else {
+		return ret, errors.New("No api route for component: " + c.Name())
 	}
 	spl := strings.Split(path, "/")
 	keys := strings.Split(spl[len(spl)-1], ":")
@@ -83,10 +77,8 @@ func (c *Component) GetData(path string) ([]map[string]interface{}, error) {
 			params = append(params, param)
 		}
 	}
-	if len(params) == 0 {
-		query = c.GetSQL
-	} else {
-		query = fmt.Sprintf(c.GetSQL, params...)
+	if len(params) > 0 {
+		query = fmt.Sprintf(query, params...)
 	}
 	res, err := dbmodel.DoQuery(query)
 	if err != nil {
@@ -198,19 +190,14 @@ func handleFuncTemplate(c Component, name string) func(w http.ResponseWriter, r 
 	}
 }
 
-//AddRoutesData adds routes for html and json endpoints
-func (c *Component) AddRoutesData(mx *http.ServeMux) {
+//AddRoutesComponent adds routes for html endpoints
+func (c *Component) AddRoutesComponent(mx *http.ServeMux) {
 	for name := range c.TemplateManager.GetTemplates() {
 		log.Println("Adding route /component/" + name + "/")
-		mx.HandleFunc("/component/"+name+"/", handleFunc(*c, name)) //TODO inefficient
+		mx.HandleFunc("/component/"+name+"/", handleFunc(*c, name))
 		log.Println("Adding route /static/templates/" + name + ".html")
 		mx.HandleFunc("/static/templates/"+name+".html", handleFuncTemplate(*c, name))
 	}
-	if c.GetSQL != "" {
-		log.Println("Adding route /data/" + c.Name())
-		mx.HandleFunc("/data/"+c.Name()+"/", handleFuncData(*c)) //TODO inefficient
-	}
-
 }
 
 //AddRoutesScripts adds Routes for js files
@@ -220,6 +207,8 @@ func (c *Component) AddRoutesScripts(mx *http.ServeMux) {
 		var i int
 		for i = 0; i < len(c.JsFiles); i++ {
 			route = "/static/js/"
+			// route += strings.Join((strings.Split(c.JsFiles[i], "/"))[1:], "/")
+
 			if filepath.Base(c.JsFiles[i]) == c.Name()+".js" {
 				route = route + filepath.Base(c.JsFiles[i])
 			} else {

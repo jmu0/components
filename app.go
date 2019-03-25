@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"git.muysers.nl/jmu0/jwt"
 	"github.com/jmu0/templates"
 	"github.com/tdewolff/minify"
 	"github.com/tdewolff/minify/js"
@@ -60,7 +61,6 @@ func (a *App) Init() error {
 
 //LoadConfig loads json config file
 func (a *App) LoadConfig() error {
-	//TODO: load json or yaml format
 	if path.Ext(a.ConfigFile) == ".json" {
 		bytes, err := ioutil.ReadFile(a.ConfigFile)
 		if err != nil {
@@ -92,14 +92,37 @@ func (a *App) LoadComponents() error {
 	if err != nil {
 		return err
 	}
-	//TODO: components in folders (recursive)
+	//TODO: components in folders naming!?
 	for _, file := range files {
 		if file.IsDir() {
-			c, err := LoadComponent(a.ComponentsPath + "/" + file.Name())
+			err = a.loadComponentFolder(a.ComponentsPath + "/" + file.Name())
 			if err != nil {
 				return err
 			}
-			a.Components[c.Name()] = c
+		}
+	}
+	return nil
+}
+
+//loadComponentFolder recursive function to load components
+func (a *App) loadComponentFolder(path string) error {
+	c, err := LoadComponent(path)
+	if err != nil {
+		return err
+	}
+	a.Components[c.Name()] = c
+	log.Println("DEBUG: loaded component:", c.Name(), c.Path)
+	//scan directories in component folder
+	files, err := ioutil.ReadDir(path)
+	if err != nil {
+		return err
+	}
+	for _, file := range files {
+		if file.IsDir() {
+			err = a.loadComponentFolder(path + "/" + file.Name())
+			if err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -108,8 +131,10 @@ func (a *App) LoadComponents() error {
 func (a *App) handleFunc(page Page) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if page.Auth == true {
-			//TODO: jwt auth
-			log.Println("TODO: Check auth..")
+			if jwt.Authenticated(r) == false {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
 		}
 		log.Println("Rendering", page.Route)
 		content, err := page.Render(a.Components, r.URL.Path)
@@ -139,7 +164,7 @@ func (a *App) AddRoutes() error {
 	}
 	//Add routes for components, data and scripts
 	for _, comp := range a.Components {
-		comp.AddRoutesData(a.Mux) //TODO to api
+		comp.AddRoutesComponent(a.Mux)
 		if a.Debug == true {
 			comp.AddRoutesScripts(a.Mux)
 		}

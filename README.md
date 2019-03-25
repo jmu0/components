@@ -10,7 +10,7 @@
 - Routing for pages
 - ComponentPath: load components in this path
 - Scripts: array of scripts to load. append to body when in debug mode
-    TODO: concatenate, minify and gzip scripts on server start, serve single js file.
+- concatenate, minify and gzip scripts on server start, serve single js file.
 
 ## components
 - load component from path
@@ -22,7 +22,7 @@
 - *.html are loaded as templates
 - every component has a TemplateManager
 - adds route for /component/[name]
-- TODO: handle POST and DELETE requests using dbModel (use data.json file to store db/table?)
+- handle POST and DELETE requests using dbModel (use data.json file to store db/table?)
 ### less
 - build tool adds all .less files to /static/css/components.less (run: build less)
 ### js
