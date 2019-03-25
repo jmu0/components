@@ -2,9 +2,9 @@ package components
 
 //Page struct for page data
 type Page struct {
-	Route      string `json:"route"`
-	Auth       bool   `json:"auth"`
-	Components []Part `json:"components"`
+	Route      string `json:"route" yaml:"route"`
+	Auth       bool   `json:"auth" yaml:"auth"`
+	Components []Part `json:"components" yaml:"components"`
 }
 
 //Render renders the components

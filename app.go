@@ -2,24 +2,27 @@ package components
 
 import (
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"log"
 	"net/http"
+	"path"
 	"path/filepath"
 	"strings"
 
 	"github.com/jmu0/templates"
 	"github.com/tdewolff/minify"
 	"github.com/tdewolff/minify/js"
+	"gopkg.in/yaml.v2"
 )
 
 //App struct for app data
 type App struct {
-	Title          string   `json:"title"`
-	ComponentsPath string   `json:"components_path"`
-	MainPath       string   `json:"main"`
-	Scripts        []string `json:"scripts"`
-	Debug          bool     `json:"debug"`
+	Title          string   `json:"title" yaml:"title"`
+	ComponentsPath string   `json:"components_path" yaml:"components_path"`
+	MainPath       string   `json:"main" yaml:"main"`
+	Scripts        []string `json:"scripts" yaml:"scripts"`
+	Debug          bool     `json:"debug" yaml:"debug"`
 	ConfigFile     string
 	Mux            *http.ServeMux
 	Components     map[string]Component
@@ -58,15 +61,28 @@ func (a *App) Init() error {
 //LoadConfig loads json config file
 func (a *App) LoadConfig() error {
 	//TODO: load json or yaml format
-	bytes, err := ioutil.ReadFile(a.ConfigFile)
-	if err != nil {
-		return err
+	if path.Ext(a.ConfigFile) == ".json" {
+		bytes, err := ioutil.ReadFile(a.ConfigFile)
+		if err != nil {
+			return err
+		}
+		err = json.Unmarshal(bytes, a)
+		if err != nil {
+			return err
+		}
+		return nil
+	} else if path.Ext(a.ConfigFile) == ".yml" {
+		yml, err := ioutil.ReadFile(a.ConfigFile)
+		if err != nil {
+			return err
+		}
+		err = yaml.Unmarshal(yml, a)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
-	err = json.Unmarshal(bytes, a)
-	if err != nil {
-		return err
-	}
-	return nil
+	return errors.New("Invalid config file: " + a.ConfigFile)
 }
 
 //LoadComponents loads components from path
@@ -93,7 +109,7 @@ func (a *App) handleFunc(page Page) func(w http.ResponseWriter, r *http.Request)
 	return func(w http.ResponseWriter, r *http.Request) {
 		if page.Auth == true {
 			//TODO: jwt auth
-			log.Println("DEBUG: Check auth..")
+			log.Println("TODO: Check auth..")
 		}
 		log.Println("Rendering", page.Route)
 		content, err := page.Render(a.Components, r.URL.Path)

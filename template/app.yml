@@ -15,7 +15,6 @@ scripts:
 main: main.html
 pages:
     - route: /
-      components:
     - route: /login
       components:
           - name: login

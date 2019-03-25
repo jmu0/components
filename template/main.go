@@ -23,7 +23,7 @@ func main() {
 		http.FileServer(http.Dir("./")).ServeHTTP(w, r)
 	})
 	var app = components.App{
-		ConfigFile: "app.json",
+		ConfigFile: "app.yml",
 		Mux:        mx,
 	}
 	err := app.Init()

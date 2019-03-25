@@ -7,9 +7,9 @@ import (
 
 //Part stores component names for app struct
 type Part struct {
-	Name       string `json:"name"`
-	Template   string `json:"template"`
-	Components []Part `json:"components"`
+	Name       string `json:"name" yaml:"name"`
+	Template   string `json:"template" yaml:"template"`
+	Components []Part `json:"components" yaml:"components"`
 }
 
 //Render renders part (recursive)
