@@ -55,7 +55,6 @@ func (a *App) Init() error {
 	main.Data["scripts"] = strings.Join(a.ScriptTags(), "\n")
 	main.Data["title"] = a.Title
 	a.MainTemplate = &main
-	// log.Println("DEBUG:", main.Data["scripts"])
 	return nil
 }
 
@@ -92,7 +91,6 @@ func (a *App) LoadComponents() error {
 	if err != nil {
 		return err
 	}
-	//TODO: components in folders naming!?
 	for _, file := range files {
 		if file.IsDir() {
 			err = a.loadComponentFolder(a.ComponentsPath + "/" + file.Name())
@@ -110,8 +108,18 @@ func (a *App) loadComponentFolder(path string) error {
 	if err != nil {
 		return err
 	}
-	a.Components[c.Name()] = c
-	log.Println("DEBUG: loaded component:", c.Name(), c.Path)
+	if !(len(c.JsFiles) == 0 && len(c.LessFiles) == 0 && len(c.TemplateManager.GetTemplates()) == 0) { //not a template
+		c.Name = strings.Replace(path, a.ComponentsPath, "", 1)
+		if c.Name[:1] == "/" {
+			c.Name = c.Name[1:]
+		}
+		c.Name = strings.Replace(c.Name, "/", ".", -1)
+		a.Components[c.Name] = c
+		log.Println("Loading component:", c.Name, "from", c.Path)
+	} else {
+		log.Println("DEBUG: not a component:", c.Path)
+	}
+
 	//scan directories in component folder
 	files, err := ioutil.ReadDir(path)
 	if err != nil {
@@ -184,10 +192,15 @@ func (a *App) AddRoutes() error {
 	a.Mux.HandleFunc("/component/templates", func(w http.ResponseWriter, r *http.Request) {
 		tmpls := make(map[string]string)
 		for _, comp := range a.Components {
+			split := strings.Split(comp.Name, ".")
 			for tmplname := range comp.TemplateManager.GetTemplates() {
 				tmpl, err := comp.TemplateManager.GetTemplate(tmplname)
 				if err == nil {
-					tmpls[tmplname] = tmpl.HTML
+					if len(split) > 1 {
+						tmpls[strings.Join(split[:len(split)-1], ".")+"."+tmplname] = tmpl.HTML
+					} else {
+						tmpls[tmplname] = tmpl.HTML
+					}
 				}
 			}
 		}
@@ -217,14 +230,13 @@ func (a *App) ScriptTags() []string {
 			ret = append(ret, "<script src=\""+scriptPath+"\"></script>")
 		}
 		for _, cmp := range a.Components {
-			// log.Println("DEBUG getting script tags for", name)
 			for i = 0; i < len(cmp.JsFiles); i++ {
 				html = "<script src=\"/static/js/"
-				if filepath.Base(cmp.JsFiles[i]) == cmp.Name()+".js" {
-					html += filepath.Base(cmp.JsFiles[i])
-				} else {
-					html += cmp.Name() + "." + filepath.Base(cmp.JsFiles[i])
+				split := strings.Split(cmp.Name, ".")
+				if len(split) > 1 {
+					html += strings.Join(split[:len(split)-1], "/") + "/"
 				}
+				html += filepath.Base(cmp.JsFiles[i])
 				html += "\"></script>"
 				ret = append(ret, html)
 			}
@@ -240,7 +252,6 @@ func (a *App) LoadScriptFiles() {
 
 	a.JsCache = []byte("")
 	for _, scriptPath := range a.Scripts {
-		// log.Println("Loading Javascript:", scriptPath)
 		if scriptPath[0] == '/' {
 			scriptPath = scriptPath[1:]
 		}
@@ -249,7 +260,6 @@ func (a *App) LoadScriptFiles() {
 	var i int
 	for _, cmp := range a.Components {
 		for i = 0; i < len(cmp.JsFiles); i++ {
-			// log.Println("Loading Javascript:", cmp.JsFiles[i])
 			a.JsCache = append(a.JsCache, loadJsFile(cmp.JsFiles[i])...)
 		}
 	}

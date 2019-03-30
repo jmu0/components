@@ -80,10 +80,10 @@ func main() {
 			var sourcePath string
 			for _, cmp := range app.Components {
 				for i := range cmp.JsFiles {
-					if filepath.Base(cmp.JsFiles[i]) == cmp.Name()+".js" {
+					if filepath.Base(cmp.JsFiles[i]) == cmp.Name+".js" {
 						linkPath = outPath + filepath.Base(cmp.JsFiles[i])
 					} else {
-						linkPath = outPath + cmp.Name() + "." + filepath.Base(cmp.JsFiles[i])
+						linkPath = outPath + cmp.Name + "." + filepath.Base(cmp.JsFiles[i])
 					}
 					sourcePath = ""
 					for j = 0; j < backCount; j++ {
@@ -104,7 +104,7 @@ func main() {
 			content = ""
 			for _, cmp := range app.Components {
 				if len(cmp.JsFiles) > 0 {
-					content += "\n//component " + cmp.Name() + "\n\n"
+					content += "\n//component " + cmp.Name + "\n\n"
 				}
 				for i := range cmp.JsFiles {
 					fileContent, err := ioutil.ReadFile(cmp.JsFiles[i])
