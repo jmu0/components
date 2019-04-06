@@ -9,6 +9,7 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"git.muysers.nl/jmu0/jwt"
 	"github.com/jmu0/templates"
@@ -31,6 +32,7 @@ type App struct {
 	MainTemplate   *templates.Template
 	JsCache        []byte
 	Port           string
+	StartTime      time.Time
 }
 
 //Init initializes the app
@@ -60,6 +62,7 @@ func (a *App) Init() error {
 	main.Data["scripts"] = strings.Join(a.ScriptTags(), "\n")
 	main.Data["title"] = a.Title
 	a.MainTemplate = &main
+	a.StartTime = time.Now()
 	return nil
 }
 
@@ -187,6 +190,7 @@ func (a *App) AddRoutes() error {
 		log.Println("Adding route /static/js/" + a.Title + ".js")
 		a.Mux.HandleFunc("/static/js/"+a.Title+".js", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-control", "max-age=90")
+			w.Header().Set("Last-Modified", a.StartTime.UTC().Format(http.TimeFormat))
 			w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 			w.Write(a.JsCache)
 		})
