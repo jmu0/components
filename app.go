@@ -30,6 +30,7 @@ type App struct {
 	Pages          []Page
 	MainTemplate   *templates.Template
 	JsCache        []byte
+	Port           string
 }
 
 //Init initializes the app
@@ -38,6 +39,10 @@ func (a *App) Init() error {
 	if err != nil {
 		return err
 	}
+	if a.Port == "" {
+		a.Port = ":8080"
+	}
+
 	err = a.LoadComponents()
 	if err != nil {
 		return err
