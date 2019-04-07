@@ -31,7 +31,7 @@ type App struct {
 	Pages          []Page
 	MainTemplate   *templates.Template
 	JsCache        []byte
-	Port           string
+	Port           string `json:"port" yaml:"port"`
 	StartTime      time.Time
 }
 
@@ -171,11 +171,13 @@ func (a *App) handleFunc(page Page) func(w http.ResponseWriter, r *http.Request)
 func (a *App) AddRoutes() error {
 	//Add routes for Pages
 	for _, page := range a.Pages {
+		if len(page.Route) == 0 {
+			return errors.New("No route given for page, check config")
+		}
 		if page.Route[len(page.Route)-1] != '/' {
 			page.Route += "/"
 		}
 		log.Println("Adding route", page.Route)
-
 		a.Mux.HandleFunc(page.Route, a.handleFunc(page))
 	}
 	//Add routes for components, data and scripts
