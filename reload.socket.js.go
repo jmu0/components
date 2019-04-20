@@ -4,7 +4,7 @@ func reloadSocketScript() []byte {
 	return []byte(`
     if (m === undefined) var m = {};
 
-    m.socket = (function () {
+    m.reloadSocket = (function () {
         var socket;
         function socketOpen(evt) {
             console.log("Reload socket open " + JSON.stringify(evt));
