@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -131,16 +132,20 @@ func main() {
 				fmt.Println("ERROR:", err)
 			}
 		}
-
+	case "run":
+		defer func() {
+			log.Println("DEFERRING...")
+		}()
+		run()
 	default:
 		printHelp()
 	}
 }
 func printHelp() {
-	fmt.Println("Invalid Arguments. Usage:")
-	fmt.Println("Build .less import file for all components: build less [<outfile>] [<mainfile>]")
-	fmt.Println("Build .js file from components: build js [outfile | debug] [debug]")
-	fmt.Println("Create new project from template: build new <name>")
+	fmt.Print("Invalid Arguments. Usage:\n\n")
+	fmt.Print("Build .less import file for all components: \n\tbuild less [<outfile>] [<mainfile>]\n\n")
+	fmt.Print("Build .js file from components: \n\tbuild js [outfile | debug] [debug]\n\n")
+	fmt.Print("Run development server: \n\tbuild run\n\n")
 }
 func loadApp() components.App {
 	var err error

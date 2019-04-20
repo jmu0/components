@@ -77,7 +77,6 @@ func (a *App) LoadConfig() error {
 		if err != nil {
 			return err
 		}
-		return nil
 	} else if path.Ext(a.ConfigFile) == ".yml" {
 		yml, err := ioutil.ReadFile(a.ConfigFile)
 		if err != nil {
@@ -87,9 +86,13 @@ func (a *App) LoadConfig() error {
 		if err != nil {
 			return err
 		}
-		return nil
+	} else {
+		return errors.New("Invalid config file: " + a.ConfigFile)
 	}
-	return errors.New("Invalid config file: " + a.ConfigFile)
+	if a.Debug == true {
+		a.Scripts = append(a.Scripts, "/static/js/reload.socket.js")
+	}
+	return nil
 }
 
 //LoadComponents loads components from path
@@ -195,6 +198,13 @@ func (a *App) AddRoutes() error {
 			w.Header().Set("Last-Modified", a.StartTime.UTC().Format(http.TimeFormat))
 			w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 			w.Write(a.JsCache)
+		})
+	} else {
+		//serve reload socket script
+		log.Println("Adding route /static/js/reload.socket.js")
+		a.Mux.HandleFunc("/static/js/reload.socket.js", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+			w.Write(reloadSocketScript())
 		})
 	}
 
