@@ -217,14 +217,22 @@ func (c *Component) AddRoutesComponent(mx *http.ServeMux) {
 func (c *Component) AddRoutesScripts(mx *http.ServeMux) {
 	if len(c.JsFiles) > 0 {
 		var route string
-		split := strings.Split(c.Name, ".")
 		var i int
 		for i = 0; i < len(c.JsFiles); i++ {
+
+			/* route in /static/js path
+			split := strings.Split(c.Name, ".")
 			route = "/static/js/"
 			if len(split) > 1 {
 				route += strings.Join(split[:len(split)-1], "/") + "/"
 			}
 			route += filepath.Base(c.JsFiles[i])
+			//*/
+
+			//* route in original components path
+			route = "/" + c.JsFiles[i]
+			//*/
+
 			log.Println("Adding route " + route)
 			mx.HandleFunc(route, handleFuncScript(c.JsFiles[i]))
 		}

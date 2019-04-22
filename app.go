@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"path"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -252,12 +251,20 @@ func (a *App) ScriptTags() []string {
 		}
 		for _, cmp := range a.Components {
 			for i = 0; i < len(cmp.JsFiles); i++ {
-				html = "<script src=\"/static/js/"
-				split := strings.Split(cmp.Name, ".")
-				if len(split) > 1 {
-					html += strings.Join(split[:len(split)-1], "/") + "/"
-				}
-				html += filepath.Base(cmp.JsFiles[i])
+				/*
+					log.Println("DEBUG script path:", cmp.JsFiles[i])
+					html = "<script src=\"/static/js/"
+					split := strings.Split(cmp.Name, ".")
+					if len(split) > 1 {
+						html += strings.Join(split[:len(split)-1], "/") + "/"
+					}
+					html += filepath.Base(cmp.JsFiles[i])
+					//*/
+
+				//* script in original components path
+				html = "<script src=\"" + cmp.JsFiles[i]
+				//*/
+
 				html += "\"></script>"
 				ret = append(ret, html)
 			}
