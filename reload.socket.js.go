@@ -1,6 +1,14 @@
 package components
 
+import (
+	"os"
+)
+
 func reloadSocketScript() []byte {
+	hostname, err := os.Hostname()
+	if err != nil {
+		hostname = "localhost"
+	}
 	return []byte(`
     if (m === undefined) var m = {};
 
@@ -23,7 +31,7 @@ func reloadSocketScript() []byte {
         }
         function socketConnect() {
             var url;
-            url = "ws://localhost:9876/ws";
+            url = "ws://` + hostname + `:9876/ws";
             socket = new WebSocket(url);
             socket.onopen = socketOpen;
             socket.onclose = socketClose;
