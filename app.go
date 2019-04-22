@@ -262,7 +262,7 @@ func (a *App) ScriptTags() []string {
 					//*/
 
 				//* script in original components path
-				html = "<script src=\"" + cmp.JsFiles[i]
+				html = "<script src=\"/" + cmp.JsFiles[i]
 				//*/
 
 				html += "\"></script>"
