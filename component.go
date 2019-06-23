@@ -201,39 +201,26 @@ func (c *Component) AddRoutesComponent(mx *http.ServeMux) {
 		} else {
 			route = name
 		}
-		log.Println("Adding route /component/" + route + "/")
+		log.Println("Adding route for component: /component/" + route + "/")
 		mx.HandleFunc("/component/"+route+"/", handleFunc(*c, name))
 		if len(split) > 1 {
 			route = strings.Join(split[:len(split)-1], ".") + "." + name
 		} else {
 			route = name
 		}
-		log.Println("Adding route /static/templates/" + route + ".html")
+		log.Println("Adding route for template: /static/templates/" + route + ".html")
 		mx.HandleFunc("/static/templates/"+route+".html", handleFuncTemplate(*c, name))
 	}
 }
 
 //AddRoutesScripts adds Routes for js files
-func (c *Component) AddRoutesScripts(mx *http.ServeMux) {
+func (c *Component) AddRoutesScripts(mx *http.ServeMux, rootPath string) {
 	if len(c.JsFiles) > 0 {
 		var route string
 		var i int
 		for i = 0; i < len(c.JsFiles); i++ {
-
-			/* route in /static/js path
-			split := strings.Split(c.Name, ".")
-			route = "/static/js/"
-			if len(split) > 1 {
-				route += strings.Join(split[:len(split)-1], "/") + "/"
-			}
-			route += filepath.Base(c.JsFiles[i])
-			//*/
-
-			//* route in original components path
-			route = "/" + c.JsFiles[i]
-			//*/
-
-			log.Println("Adding route " + route)
+			route = "/" + strings.Replace(c.JsFiles[i], rootPath, "", -1)
+			log.Println("Adding route for script:" + route)
 			mx.HandleFunc(route, handleFuncScript(c.JsFiles[i]))
 		}
 	}

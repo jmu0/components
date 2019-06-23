@@ -32,6 +32,7 @@ type App struct {
 	JsCache        []byte
 	Port           string `json:"port" yaml:"port"`
 	StartTime      time.Time
+	RootPath       string
 }
 
 //Init initializes the app
@@ -54,7 +55,7 @@ func (a *App) Init() error {
 	}
 	var main = templates.Template{}
 	main.Data = make(map[string]interface{})
-	err = main.Load(a.ComponentsPath + "/" + a.MainPath)
+	err = main.Load(a.RootPath + a.ComponentsPath + "/" + a.MainPath)
 	if err != nil {
 		return err
 	}
@@ -67,8 +68,9 @@ func (a *App) Init() error {
 
 //LoadConfig loads json config file
 func (a *App) LoadConfig() error {
-	if path.Ext(a.ConfigFile) == ".json" {
-		bytes, err := ioutil.ReadFile(a.ConfigFile)
+	if path.Ext(a.RootPath+a.ConfigFile) == ".json" {
+		log.Println("Loading config file:", a.RootPath+a.ConfigFile)
+		bytes, err := ioutil.ReadFile(a.RootPath + a.ConfigFile)
 		if err != nil {
 			return err
 		}
@@ -76,8 +78,9 @@ func (a *App) LoadConfig() error {
 		if err != nil {
 			return err
 		}
-	} else if path.Ext(a.ConfigFile) == ".yml" {
-		yml, err := ioutil.ReadFile(a.ConfigFile)
+	} else if path.Ext(a.RootPath+a.ConfigFile) == ".yml" {
+		log.Println("Loading config file:", a.RootPath+a.ConfigFile)
+		yml, err := ioutil.ReadFile(a.RootPath + a.ConfigFile)
 		if err != nil {
 			return err
 		}
@@ -86,10 +89,10 @@ func (a *App) LoadConfig() error {
 			return err
 		}
 	} else {
-		return errors.New("Invalid config file: " + a.ConfigFile)
+		return errors.New("Invalid config file: " + a.RootPath + a.ConfigFile)
 	}
 	if a.Debug == true {
-		a.Scripts = append(a.Scripts, "/static/js/reload.socket.js")
+		a.Scripts = append(a.Scripts, a.RootPath+"static/js/reload.socket.js")
 	}
 	return nil
 }
@@ -97,13 +100,13 @@ func (a *App) LoadConfig() error {
 //LoadComponents loads components from path
 func (a *App) LoadComponents() error {
 	a.Components = make(map[string]Component)
-	files, err := ioutil.ReadDir(a.ComponentsPath)
+	files, err := ioutil.ReadDir(a.RootPath + a.ComponentsPath)
 	if err != nil {
 		return err
 	}
 	for _, file := range files {
 		if file.IsDir() {
-			err = a.loadComponentFolder(a.ComponentsPath + "/" + file.Name())
+			err = a.loadComponentFolder(a.RootPath + a.ComponentsPath + "/" + file.Name())
 			if err != nil {
 				return err
 			}
@@ -119,7 +122,7 @@ func (a *App) loadComponentFolder(path string) error {
 		return err
 	}
 	if !(len(c.JsFiles) == 0 && len(c.LessFiles) == 0 && len(c.TemplateManager.GetTemplates()) == 0) { //not a template
-		c.Name = strings.Replace(path, a.ComponentsPath, "", 1)
+		c.Name = strings.Replace(path, a.RootPath+a.ComponentsPath, "", 1)
 		if c.Name[:1] == "/" {
 			c.Name = c.Name[1:]
 		}
@@ -179,19 +182,19 @@ func (a *App) AddRoutes() error {
 		if page.Route[len(page.Route)-1] != '/' {
 			page.Route += "/"
 		}
-		log.Println("Adding route", page.Route)
+		log.Println("Adding route for page:", page.Route)
 		a.Mux.HandleFunc(page.Route, a.handleFunc(page))
 	}
 	//Add routes for components, data and scripts
 	for _, comp := range a.Components {
 		comp.AddRoutesComponent(a.Mux)
 		if a.Debug == true {
-			comp.AddRoutesScripts(a.Mux)
+			comp.AddRoutesScripts(a.Mux, a.RootPath)
 		}
 	}
 	if a.Debug == false {
-		a.LoadScriptFiles()
-		log.Println("Adding route /static/js/" + a.Title + ".js")
+		a.LoadScriptCache()
+		log.Println("Adding route for script: /static/js/" + a.Title + ".js")
 		a.Mux.HandleFunc("/static/js/"+a.Title+".js", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Cache-control", "max-age=90")
 			w.Header().Set("Last-Modified", a.StartTime.UTC().Format(http.TimeFormat))
@@ -200,7 +203,7 @@ func (a *App) AddRoutes() error {
 		})
 	} else {
 		//serve reload socket script
-		log.Println("Adding route /static/js/reload.socket.js")
+		log.Println("Adding route for reload socket script: /static/js/reload.socket.js")
 		a.Mux.HandleFunc("/static/js/reload.socket.js", func(w http.ResponseWriter, r *http.Request) {
 			w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
 			w.Write(reloadSocketScript())
@@ -208,7 +211,7 @@ func (a *App) AddRoutes() error {
 	}
 
 	//Add route for templates
-	log.Println("Adding route /component/templates")
+	log.Println("Adding route for template collection: /component/templates")
 	a.Mux.HandleFunc("/component/templates", func(w http.ResponseWriter, r *http.Request) {
 		tmpls := make(map[string]string)
 		for _, comp := range a.Components {
@@ -251,20 +254,7 @@ func (a *App) ScriptTags() []string {
 		}
 		for _, cmp := range a.Components {
 			for i = 0; i < len(cmp.JsFiles); i++ {
-				/*
-					log.Println("DEBUG script path:", cmp.JsFiles[i])
-					html = "<script src=\"/static/js/"
-					split := strings.Split(cmp.Name, ".")
-					if len(split) > 1 {
-						html += strings.Join(split[:len(split)-1], "/") + "/"
-					}
-					html += filepath.Base(cmp.JsFiles[i])
-					//*/
-
-				//* script in original components path
 				html = "<script src=\"/" + cmp.JsFiles[i]
-				//*/
-
 				html += "\"></script>"
 				ret = append(ret, html)
 			}
@@ -275,14 +265,14 @@ func (a *App) ScriptTags() []string {
 	return ret
 }
 
-//LoadScriptFiles loads and crushes js files
-func (a *App) LoadScriptFiles() {
-
+//LoadScriptCache loads and crushes js files
+func (a *App) LoadScriptCache() {
 	a.JsCache = []byte("")
 	for _, scriptPath := range a.Scripts {
 		if scriptPath[0] == '/' {
 			scriptPath = scriptPath[1:]
 		}
+		scriptPath = a.RootPath + scriptPath
 		a.JsCache = append(a.JsCache, loadJsFile(scriptPath)...)
 	}
 	var i int
@@ -295,6 +285,10 @@ func (a *App) LoadScriptFiles() {
 
 func loadJsFile(path string) []byte {
 	bytes, err := ioutil.ReadFile(path)
+	log.Println("Loading script cache:", path)
+	if err != nil {
+		log.Println("Error loading script:", err)
+	}
 	m := minify.New()
 	m.AddFunc("text/javascript", js.Minify)
 	minified, err := m.String("text/javascript", string(bytes))

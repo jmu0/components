@@ -53,10 +53,10 @@ func AddAPIRoutes(mx *http.ServeMux) {
 	for _, r := range routes {
 		switch r.Type {
 		case "query":
-			log.Println("Adding route /api/" + r.Route + "/ (" + r.Type + ")")
+			log.Println("Adding route for api: /api/" + r.Route + "/ (" + r.Type + ")")
 			mx.HandleFunc("/api/"+r.Route+"/", queryHandler(r))
 		case "rest":
-			log.Println("Adding route /api/" + r.Route + "/ (" + r.Type + ")")
+			log.Println("Adding route for api: /api/" + r.Route + "/ (" + r.Type + ")")
 			mx.HandleFunc("/api/"+r.Route+"/", restHandler(r))
 		default:
 			log.Println("ERROR unknown route type:", r.Type)
