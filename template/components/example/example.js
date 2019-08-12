@@ -1,6 +1,12 @@
 m.ui.components.example = (function(){
     m.ui.router.add(/\/example\/(.*)/, function (uri, data) {
         console.log("ROUTE from example/*", uri, data);
+        var el = m.ui.components.import(document.createElement("example"));
+        el.template="example";
+        el.render();
+        var main =  document.querySelector("main");
+        main.innerHTML="";
+        main.appendChild(el);
     });
     
     return function (element, data) {
