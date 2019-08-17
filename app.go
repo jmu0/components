@@ -92,7 +92,7 @@ func (a *App) LoadConfig() error {
 		return errors.New("Invalid config file: " + a.RootPath + a.ConfigFile)
 	}
 	if a.Debug == true {
-		a.Scripts = append(a.Scripts, a.RootPath+"static/js/reload.socket.js")
+		a.Scripts = append(a.Scripts, a.RootPath+"/static/js/reload.socket.js")
 	}
 	return nil
 }
