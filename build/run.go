@@ -71,6 +71,21 @@ func kill() {
 	}
 }
 
+func checkExtension(file string) bool {
+	switch filepath.Ext(file) {
+	case ".go":
+		return true
+	case ".html":
+		return true
+	case ".js":
+		return true
+	case ".css":
+		return true
+	default:
+		return false
+	}
+}
+
 func watch() {
 	w := watcher.New()
 
@@ -83,8 +98,8 @@ func watch() {
 				if err != nil {
 					wd = ""
 				}
-				log.Println("Change detected:", strings.Replace(event.Path, wd, "", -1))
-				if event.Name() != "app" {
+				if checkExtension(event.Name()) {
+					log.Println("Change detected:", strings.Replace(event.Path, wd, "", -1))
 					kill()
 					if filepath.Ext(event.Name()) == ".go" {
 						build()
