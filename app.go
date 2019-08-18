@@ -59,7 +59,7 @@ func (a *App) Init() error {
 	if err != nil {
 		return err
 	}
-	main.Data["scripts"] = strings.Join(a.ScriptTags(), "\n")
+	main.Data["scripts"] = a.ScriptTags() //strings.Join(a.ScriptTags(), "\n")
 	main.Data["title"] = a.Title
 	a.MainTemplate = &main
 	a.StartTime = time.Now()
@@ -244,23 +244,23 @@ func (a *App) AddRoutes() error {
 }
 
 //ScriptTags returns html script tags for javascript files
-func (a *App) ScriptTags() []string {
-	var ret []string
+func (a *App) ScriptTags() string {
+	var ret string
 	var i int
 	var html string
 	if a.Debug == true {
 		for _, scriptPath := range a.Scripts {
-			ret = append(ret, "<script src=\""+scriptPath+"\"></script>")
+			ret += "<script src=\"" + scriptPath + "\"></script>\n"
 		}
 		for _, cmp := range a.Components {
 			for i = 0; i < len(cmp.JsFiles); i++ {
 				html = "<script src=\"/" + cmp.JsFiles[i]
-				html += "\"></script>"
-				ret = append(ret, html)
+				html += "\"></script>\n"
+				ret += html
 			}
 		}
 	} else {
-		ret = append(ret, "<script src=\"/static/js/"+a.Title+".js\"></script>")
+		ret = "<script src=\"/static/js/" + a.Title + ".js\"></script>\n"
 	}
 	return ret
 }
