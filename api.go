@@ -11,17 +11,20 @@ import (
 
 	"git.muysers.nl/jmu0/jwt"
 
+	"github.com/graphql-go/graphql"
+	"github.com/jmu0/dbAPI/db/mysql"
 	"github.com/jmu0/orm/dbmodel"
 	"gopkg.in/yaml.v2"
 )
 
 //Route struct for api route data
 type Route struct {
-	Route   string `yaml:"route"`
-	Type    string `yaml:"type"`
-	Auth    bool   `yaml:"auth"`
-	Methods string `yaml:"methods"`
-	SQL     string `yaml:"sql"`
+	Route   string   `yaml:"route"`
+	Type    string   `yaml:"type"`
+	Auth    bool     `yaml:"auth"`
+	Methods string   `yaml:"methods"`
+	SQL     string   `yaml:"sql"`
+	Tables  []string `yaml:"tables"`
 }
 
 var routes map[string]Route
@@ -43,7 +46,18 @@ func LoadRoutesYaml(path string) error {
 		routes = make(map[string]Route)
 	}
 	for _, rt := range rts {
-		routes[rt.Route] = rt
+		if rt.Type == "graphql" {
+			if gqlr, ok := routes[rt.Route]; ok {
+				gqlr.Tables = append(gqlr.Tables, rt.Tables...)
+				if gqlr.Auth == false && rt.Auth == true {
+					gqlr.Auth = true
+				}
+			} else {
+				routes[rt.Route] = rt
+			}
+		} else {
+			routes[rt.Route] = rt
+		}
 	}
 	return nil
 }
@@ -58,9 +72,19 @@ func AddAPIRoutes(mx *http.ServeMux) {
 		case "rest":
 			log.Println("Adding route for api: /api/" + r.Route + "/ (" + r.Type + ")")
 			mx.HandleFunc("/api/"+r.Route+"/", restHandler(r))
+		case "graphql":
+			log.Println("Adding route for api: /api/" + r.Route + " (" + r.Type + ")")
+			schema, err := mysql.BuildSchema(mysql.BuildSchemaArgs{
+				Tables: r.Tables,
+			})
+			if err != nil {
+				log.Println("GraphQL Schema error:", err)
+			}
+			mx.HandleFunc("/api/"+r.Route, graphQLhandler(r, &schema))
 		default:
 			log.Println("ERROR unknown route type:", r.Type)
 		}
+
 	}
 }
 
@@ -111,6 +135,18 @@ func queryHandler(route Route) func(w http.ResponseWriter, r *http.Request) {
 		log.Println("Serving data:", r.URL.Path)
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 		w.Write(bytes)
+	}
+}
+
+func graphQLhandler(route Route, schema *graphql.Schema) func(w http.ResponseWriter, r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if route.Auth == true {
+			if jwt.Authenticated(r) == false {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+		}
+		mysql.HandleGQL(schema, w, r)
 	}
 }
 
