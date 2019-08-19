@@ -7,3 +7,11 @@
   type: rest
   auth: true
   methods: GET,HEAD,POST,DELETE
+- route: graphql
+  type: graphql
+  auth: false
+  tables:
+    - Assortiment.Plant
+    - Assortiment.Maat
+    - Assortiment.Artikel
+    - Assortiment.Voorraad
