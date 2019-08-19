@@ -81,6 +81,8 @@ func checkExtension(file string) bool {
 		return true
 	case ".css":
 		return true
+	case ".yml":
+		return true
 	default:
 		return false
 	}
