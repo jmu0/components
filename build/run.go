@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -39,7 +41,6 @@ func start() {
 	// args := []string{"run"}
 	// args = append(args, gofiles...)
 	// cmd = exec.Command("go", args...)
-	cmd = exec.Command("./app")
 	//kill child processes: cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
 
 	// stdout, err := cmd.StdoutPipe()
@@ -47,10 +48,17 @@ func start() {
 	// 	log.Println("App error:", err)
 	// }
 
+	cmd = exec.Command("./app")
+	var stdBuffer bytes.Buffer
+	mw := io.MultiWriter(os.Stdout, &stdBuffer)
+	cmd.Stdout = mw
+	cmd.Stderr = mw
+
 	log.Println("Starting app...")
 	if err := cmd.Start(); err != nil {
 		log.Fatal(err)
 	}
+	log.Println(stdBuffer.String())
 
 	// in := bufio.NewScanner(stdout)
 	// for in.Scan() {
