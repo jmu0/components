@@ -13,7 +13,6 @@ import (
 
 	"github.com/graphql-go/graphql"
 	"github.com/jmu0/dbAPI/db/mysql"
-	"github.com/jmu0/orm/dbmodel"
 	"gopkg.in/yaml.v2"
 )
 
@@ -107,7 +106,7 @@ func restHandler(route Route) func(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if allow == true {
-			dbmodel.HandleREST(apiURL, w, r)
+			mysql.HandleREST(apiURL, w, r)
 		} else {
 			log.Println("Method not allowed:", r.Method, r.URL.Path)
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -166,7 +165,7 @@ func (r *Route) GetData(path string) ([]map[string]interface{}, error) {
 	keys := strings.Split(spl[len(spl)-1], ":")
 	params := make([]interface{}, 0)
 	for i := range keys {
-		param = dbmodel.Escape(strings.TrimSpace(keys[i]))
+		param = mysql.Escape(strings.TrimSpace(keys[i]))
 		if len(param) > 0 {
 			params = append(params, param)
 		}
@@ -176,7 +175,7 @@ func (r *Route) GetData(path string) ([]map[string]interface{}, error) {
 	} else {
 		query = fmt.Sprintf(r.SQL, params...)
 	}
-	res, err := dbmodel.DoQuery(query)
+	res, err := mysql.DoQuery(query)
 	if err != nil {
 		return ret, err
 	}
