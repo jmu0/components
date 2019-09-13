@@ -27,7 +27,7 @@ type Route struct {
 	Tables  []string `yaml:"tables"`
 }
 
-var routes map[string]Route
+var routes map[string]*Route
 var apiURL = "/api"
 
 //LoadRoutesYaml loads routes from yaml file and adds to routes slice
@@ -37,23 +37,25 @@ func LoadRoutesYaml(path string) error {
 	if err != nil {
 		return err
 	}
-	var rts []Route
+	var rts []*Route
 	err = yaml.Unmarshal(yml, &rts)
 	if err != nil {
 		return err
 	}
 	if routes == nil {
-		routes = make(map[string]Route)
+		routes = make(map[string]*Route)
 	}
 	for _, rt := range rts {
 		if rt.Type == "graphql" {
-			if gqlr, ok := routes[rt.Route]; ok {
-				gqlr.Tables = append(gqlr.Tables, rt.Tables...)
-				if gqlr.Auth == false && rt.Auth == true {
-					gqlr.Auth = true
+			if _, ok := routes[rt.Route]; ok {
+				routes[rt.Route].Tables = append(routes[rt.Route].Tables, rt.Tables...)
+				if routes[rt.Route].Auth == false && rt.Auth == true {
+					routes[rt.Route].Auth = true
 				}
+				log.Println("DEBUG added tables to route", rt.Route, rt.Tables)
 			} else {
 				routes[rt.Route] = rt
+				log.Println("DEBUG created route:", rt.Route)
 			}
 		} else {
 			routes[rt.Route] = rt
@@ -64,14 +66,17 @@ func LoadRoutesYaml(path string) error {
 
 //AddAPIRoutes creates handlers for routes
 func AddAPIRoutes(mx *http.ServeMux) {
+	// log.Println("DEBUG Routes", routes)
+	// log.Println("DEBUG graphql tables", routes["graphql"].Tables)
 	for _, r := range routes {
+		// log.Println("DEBUG r=", r)
 		switch r.Type {
 		case "query":
 			log.Println("Adding route for api: /api/" + r.Route + "/ (" + r.Type + ")")
-			mx.HandleFunc("/api/"+r.Route+"/", queryHandler(r))
+			mx.HandleFunc("/api/"+r.Route+"/", queryHandler(*r))
 		case "rest":
 			log.Println("Adding route for api: /api/" + r.Route + "/ (" + r.Type + ")")
-			mx.HandleFunc("/api/"+r.Route+"/", restHandler(r))
+			mx.HandleFunc("/api/"+r.Route+"/", restHandler(*r))
 		case "graphql":
 			log.Println("Adding route for api: /api/" + r.Route + " (" + r.Type + ")")
 			schema, err := mysql.BuildSchema(mysql.BuildSchemaArgs{
@@ -80,7 +85,7 @@ func AddAPIRoutes(mx *http.ServeMux) {
 			if err != nil {
 				log.Println("GraphQL Schema error:", err)
 			}
-			mx.HandleFunc("/api/"+r.Route, graphQLhandler(r, &schema))
+			mx.HandleFunc("/api/"+r.Route, graphQLhandler(*r, &schema))
 		default:
 			log.Println("ERROR unknown route type:", r.Type)
 		}
