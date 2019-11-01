@@ -201,6 +201,7 @@ func (a *App) AddRoutes() error {
 			w.Header().Set("Cache-control", "max-age=90")
 			w.Header().Set("Last-Modified", a.StartTime.UTC().Format(http.TimeFormat))
 			w.Header().Set("Content-Type", "application/javascript; charset=utf-8")
+			w.Header().Set("Content-Encoding", "gzip")
 			w.Write(a.JsCache)
 		})
 	} else {
@@ -215,6 +216,7 @@ func (a *App) AddRoutes() error {
 	//Add route for templates
 	log.Println("Adding route for template collection: /component/templates")
 	a.Mux.HandleFunc("/component/templates", func(w http.ResponseWriter, r *http.Request) {
+		//TODO template cache?
 		tmpls := make(map[string]string)
 		for _, comp := range a.Components {
 			split := strings.Split(comp.Name, ".")
@@ -230,13 +232,20 @@ func (a *App) AddRoutes() error {
 			}
 		}
 		bytes, err := json.Marshal(tmpls)
-		//TODO: gzip
 		if err != nil {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
+		zip, err := compress(bytes)
+		if err == nil {
+			bytes = zip
+			log.Println("compressed templates")
+		} else {
+			log.Println("Error compressing templates:", err)
+		}
 		w.Header().Set("Cache-control", "max-age=90")
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
+		w.Header().Set("Content-Encoding", "gzip")
 		w.Write(bytes)
 	})
 
