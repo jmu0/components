@@ -1,6 +1,8 @@
 package components
 
 import (
+	"bytes"
+	"compress/gzip"
 	"encoding/json"
 	"errors"
 	"io/ioutil"
@@ -228,6 +230,7 @@ func (a *App) AddRoutes() error {
 			}
 		}
 		bytes, err := json.Marshal(tmpls)
+		//TODO: gzip
 		if err != nil {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
@@ -281,6 +284,13 @@ func (a *App) LoadScriptCache() {
 			a.JsCache = append(a.JsCache, loadJsFile(cmp.JsFiles[i])...)
 		}
 	}
+	comp, err := compress(a.JsCache)
+	if err == nil {
+		a.JsCache = comp
+		log.Println("Compressed script cache")
+	} else {
+		log.Println("Error compressing script cache")
+	}
 }
 
 func loadJsFile(path string) []byte {
@@ -297,4 +307,17 @@ func loadJsFile(path string) []byte {
 		log.Println("ERROR minifying js file:", err)
 	}
 	return []byte(minified)
+}
+
+func compress(inp []byte) ([]byte, error) {
+	var buf bytes.Buffer
+	zw := gzip.NewWriter(&buf)
+	_, err := zw.Write(inp)
+	if err != nil {
+		return inp, err
+	}
+	if err := zw.Close(); err != nil {
+		return inp, err
+	}
+	return []byte(buf.String()), nil
 }
