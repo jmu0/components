@@ -10,9 +10,12 @@ import (
 	"strings"
 
 	"git.muysers.nl/jmu0/jwt"
-
 	"github.com/graphql-go/graphql"
-	"github.com/jmu0/dbAPI/db/mysql"
+	"github.com/jmu0/dbAPI/api"
+	"github.com/jmu0/dbAPI/db"
+
+	// "github.com/graphql-go/graphql"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -64,7 +67,7 @@ func LoadRoutesYaml(path string) error {
 }
 
 //AddAPIRoutes creates handlers for routes
-func AddAPIRoutes(mx *http.ServeMux) {
+func AddAPIRoutes(mx *http.ServeMux, conn db.Conn) {
 	// log.Println("DEBUG Routes", routes)
 	// log.Println("DEBUG graphql tables", routes["graphql"].Tables)
 	for _, r := range routes {
@@ -72,14 +75,15 @@ func AddAPIRoutes(mx *http.ServeMux) {
 		switch r.Type {
 		case "query":
 			log.Println("Adding route for api: /api/" + r.Route + "/ (" + r.Type + ")")
-			mx.HandleFunc("/api/"+r.Route+"/", queryHandler(*r))
+			mx.HandleFunc("/api/"+r.Route+"/", queryHandler(*r, conn))
 		case "rest":
 			log.Println("Adding route for api: /api/" + r.Route + "/ (" + r.Type + ")")
-			mx.HandleFunc("/api/"+r.Route+"/", restHandler(*r))
+			mx.HandleFunc("/api/"+r.Route+"/", restHandler(*r, conn))
 		case "graphql":
 			log.Println("Adding route for api: /api/" + r.Route + " (" + r.Type + ")")
-			schema, err := mysql.BuildSchema(mysql.BuildSchemaArgs{
+			schema, err := api.BuildSchema(api.BuildSchemaArgs{
 				Tables: r.Tables,
+				Conn:   conn,
 			})
 			if err != nil {
 				log.Println("GraphQL Schema error:", err)
@@ -93,7 +97,7 @@ func AddAPIRoutes(mx *http.ServeMux) {
 }
 
 //restHandler handler for rest api requests
-func restHandler(route Route) func(w http.ResponseWriter, r *http.Request) {
+func restHandler(route Route, conn db.Conn) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var allow = false
 		if strings.Contains(strings.ToLower(route.Methods), strings.ToLower(r.Method)) {
@@ -106,7 +110,8 @@ func restHandler(route Route) func(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		if allow == true {
-			mysql.HandleREST(apiURL, w, r)
+			api.RestHandler(apiURL, conn)(w, r)
+			// api.HandleREST(apiURL, w, r)
 		} else {
 			log.Println("Method not allowed:", r.Method, r.URL.Path)
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
@@ -116,7 +121,7 @@ func restHandler(route Route) func(w http.ResponseWriter, r *http.Request) {
 }
 
 //queryHandler creates handler func for query route
-func queryHandler(route Route) func(w http.ResponseWriter, r *http.Request) {
+func queryHandler(route Route, conn db.Conn) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if route.Auth == true {
 			if jwt.Authenticated(r) == false {
@@ -124,7 +129,7 @@ func queryHandler(route Route) func(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 		}
-		data, err := route.GetData(r.URL.Path)
+		data, err := route.GetData(r.URL.Path, conn)
 		if err != nil {
 			log.Println("Error handle data:", err)
 			http.NotFound(w, r)
@@ -150,12 +155,12 @@ func graphQLhandler(route Route, schema *graphql.Schema) func(w http.ResponseWri
 				return
 			}
 		}
-		mysql.HandleGQL(schema, w, r)
+		api.HandleGQL(schema, w, r)
 	}
 }
 
 //GetData gets data. keys from url path
-func (r *Route) GetData(path string) ([]map[string]interface{}, error) {
+func (r *Route) GetData(path string, conn db.Conn) ([]map[string]interface{}, error) {
 	var ret = make([]map[string]interface{}, 0)
 	var query, param string
 	if r.SQL == "" {
@@ -165,7 +170,7 @@ func (r *Route) GetData(path string) ([]map[string]interface{}, error) {
 	keys := strings.Split(spl[len(spl)-1], ":")
 	params := make([]interface{}, 0)
 	for i := range keys {
-		param = mysql.Escape(strings.TrimSpace(keys[i]))
+		param = db.Escape(strings.TrimSpace(keys[i]))
 		if len(param) > 0 {
 			params = append(params, param)
 		}
@@ -175,7 +180,7 @@ func (r *Route) GetData(path string) ([]map[string]interface{}, error) {
 	} else {
 		query = fmt.Sprintf(r.SQL, params...)
 	}
-	res, err := mysql.DoQuery(query)
+	res, err := conn.Query(query)
 	if err != nil {
 		return ret, err
 	}

@@ -10,7 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/jmu0/orm/dbmodel"
+	"github.com/jmu0/dbAPI/db"
 	"github.com/jmu0/templates"
 )
 
@@ -25,7 +25,6 @@ func LoadComponent(path string) (Component, error) {
 			return c, err
 		}
 	}
-
 	lessfiles, err := filepath.Glob(c.Path + "/*.less")
 	if len(lessfiles) > 0 && err == nil {
 		c.LessFiles = lessfiles
@@ -56,7 +55,7 @@ func (c *Component) OldName() string {
 }
 
 //GetData gets data. keys from url path
-func (c *Component) GetData(path string) ([]map[string]interface{}, error) {
+func (c *Component) GetData(path string, conn db.Conn) ([]map[string]interface{}, error) {
 	var ret = make([]map[string]interface{}, 0)
 	var query, param string
 	if route, ok := routes[c.Name]; ok {
@@ -72,7 +71,7 @@ func (c *Component) GetData(path string) ([]map[string]interface{}, error) {
 	keys := strings.Split(spl[len(spl)-1], ":")
 	params := make([]interface{}, 0)
 	for i := range keys {
-		param = dbmodel.Escape(strings.TrimSpace(keys[i]))
+		param = db.Escape(strings.TrimSpace(keys[i]))
 		if len(param) > 0 {
 			params = append(params, param)
 		}
@@ -80,7 +79,7 @@ func (c *Component) GetData(path string) ([]map[string]interface{}, error) {
 	if len(params) > 0 {
 		query = fmt.Sprintf(query, params...)
 	}
-	res, err := dbmodel.DoQuery(query)
+	res, err := conn.Query(query)
 	if err != nil {
 		return ret, err
 	}
@@ -101,7 +100,7 @@ func (c *Component) Render(templateName string, data map[string]interface{}) (st
 }
 
 //Render renders component (prevent closure in loop over templates)
-func handleFunc(c Component, templateName string) func(w http.ResponseWriter, r *http.Request) {
+func handleFunc(c Component, templateName string, conn db.Conn) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var html, itemhtml string
 		spl := strings.Split(r.URL.Path, "/")
@@ -110,7 +109,7 @@ func handleFunc(c Component, templateName string) func(w http.ResponseWriter, r 
 			http.NotFound(w, r)
 			return
 		}
-		data, err := c.GetData(r.URL.Path)
+		data, err := c.GetData(r.URL.Path, conn)
 		if err != nil {
 
 			log.Println("Query error:", err)
@@ -151,9 +150,9 @@ func handleFunc(c Component, templateName string) func(w http.ResponseWriter, r 
 	}
 }
 
-func handleFuncData(c Component) func(w http.ResponseWriter, r *http.Request) {
+func handleFuncData(c Component, conn db.Conn) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		data, err := c.GetData(r.URL.Path)
+		data, err := c.GetData(r.URL.Path, conn)
 		if err != nil {
 			log.Println("Error handle data:", err)
 			http.NotFound(w, r)
@@ -192,7 +191,7 @@ func handleFuncTemplate(c Component, name string) func(w http.ResponseWriter, r 
 }
 
 //AddRoutesComponent adds routes for html endpoints
-func (c *Component) AddRoutesComponent(mx *http.ServeMux) {
+func (c *Component) AddRoutesComponent(mx *http.ServeMux, conn db.Conn) {
 	var route string
 	split := strings.Split(c.Name, ".")
 	for name := range c.TemplateManager.GetTemplates() {
@@ -202,7 +201,7 @@ func (c *Component) AddRoutesComponent(mx *http.ServeMux) {
 			route = name
 		}
 		log.Println("Adding route for component: /component/" + route + "/")
-		mx.HandleFunc("/component/"+route+"/", handleFunc(*c, name))
+		mx.HandleFunc("/component/"+route+"/", handleFunc(*c, name, conn))
 		if len(split) > 1 {
 			route = strings.Join(split[:len(split)-1], ".") + "." + name
 		} else {

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"log"
 	"strings"
+
+	"github.com/jmu0/dbAPI/db"
 )
 
 //Part stores component names for app struct
@@ -14,14 +16,14 @@ type Part struct {
 }
 
 //Render renders part (recursive)
-func (p *Part) Render(components map[string]Component, path string) (string, error) {
+func (p *Part) Render(components map[string]Component, path string, conn db.Conn) (string, error) {
 	var err error
 	var html, itemhtml, cmpName string
 	var data []map[string]interface{}
 	if cmp, ok := components[p.Name]; ok {
 		var partData = make(map[string]interface{})
 		for _, prt := range p.Components {
-			partData[prt.Name], err = prt.Render(components, path)
+			partData[prt.Name], err = prt.Render(components, path, conn)
 			if err != nil {
 				return "", err
 			}
@@ -32,7 +34,7 @@ func (p *Part) Render(components map[string]Component, path string) (string, err
 				break
 			}
 		}
-		data, err = cmp.GetData(path)
+		data, err = cmp.GetData(path, conn)
 		if err != nil || len(data) == 0 {
 			data = make([]map[string]interface{}, 0)
 			data = append(data, partData)

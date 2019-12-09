@@ -1,5 +1,7 @@
 package components
 
+import "github.com/jmu0/dbAPI/db"
+
 //Page struct for page data
 type Page struct {
 	Route      string `json:"route" yaml:"route"`
@@ -8,10 +10,10 @@ type Page struct {
 }
 
 //Render renders the components
-func (p *Page) Render(components map[string]Component, path string) (string, error) {
+func (p *Page) Render(components map[string]Component, path string, conn db.Conn) (string, error) {
 	var html string
 	for _, comp := range p.Components {
-		cmphtml, err := comp.Render(components, path)
+		cmphtml, err := comp.Render(components, path, conn)
 		if err != nil {
 			return "", err
 		}

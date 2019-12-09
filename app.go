@@ -8,15 +8,16 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
-	"path"
 	"strings"
 	"time"
 
+	"github.com/jmu0/dbAPI/db"
+
 	"git.muysers.nl/jmu0/jwt"
+	"github.com/jmu0/settings"
 	"github.com/jmu0/templates"
 	"github.com/tdewolff/minify"
 	"github.com/tdewolff/minify/js"
-	"gopkg.in/yaml.v2"
 )
 
 //App struct for app data
@@ -35,6 +36,7 @@ type App struct {
 	Port           string `json:"port" yaml:"port"`
 	StartTime      time.Time
 	RootPath       string
+	Conn           db.Conn
 }
 
 //Init initializes the app
@@ -46,12 +48,11 @@ func (a *App) Init() error {
 	if a.Port == "" {
 		a.Port = ":8080"
 	}
-
 	err = a.LoadComponents()
 	if err != nil {
 		return err
 	}
-	err = a.AddRoutes()
+	err = a.AddRoutes(a.Conn)
 	if err != nil {
 		return err
 	}
@@ -70,29 +71,30 @@ func (a *App) Init() error {
 
 //LoadConfig loads json config file
 func (a *App) LoadConfig() error {
-	if path.Ext(a.RootPath+a.ConfigFile) == ".json" {
-		log.Println("Loading config file:", a.RootPath+a.ConfigFile)
-		bytes, err := ioutil.ReadFile(a.RootPath + a.ConfigFile)
-		if err != nil {
-			return err
-		}
-		err = json.Unmarshal(bytes, a)
-		if err != nil {
-			return err
-		}
-	} else if path.Ext(a.RootPath+a.ConfigFile) == ".yml" {
-		log.Println("Loading config file:", a.RootPath+a.ConfigFile)
-		yml, err := ioutil.ReadFile(a.RootPath + a.ConfigFile)
-		if err != nil {
-			return err
-		}
-		err = yaml.Unmarshal(yml, a)
-		if err != nil {
-			return err
-		}
-	} else {
-		return errors.New("Invalid config file: " + a.RootPath + a.ConfigFile)
-	}
+	settings.Load(a.RootPath+a.ConfigFile, a)
+	// if path.Ext(a.RootPath+a.ConfigFile) == ".json" {
+	// 	log.Println("Loading config file:", a.RootPath+a.ConfigFile)
+	// 	bytes, err := ioutil.ReadFile(a.RootPath + a.ConfigFile)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	err = json.Unmarshal(bytes, a)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// } else if path.Ext(a.RootPath+a.ConfigFile) == ".yml" {
+	// 	log.Println("Loading config file:", a.RootPath+a.ConfigFile)
+	// 	yml, err := ioutil.ReadFile(a.RootPath + a.ConfigFile)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	err = yaml.Unmarshal(yml, a)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// } else {
+	// 	return errors.New("Invalid config file: " + a.RootPath + a.ConfigFile)
+	// }
 	if a.Debug == true {
 		a.Scripts = append(a.Scripts, a.RootPath+"/static/js/reload.socket.js")
 	}
@@ -160,7 +162,7 @@ func (a *App) handleFunc(page Page) func(w http.ResponseWriter, r *http.Request)
 			}
 		}
 		log.Println("Rendering", page.Route)
-		content, err := page.Render(a.Components, r.URL.Path)
+		content, err := page.Render(a.Components, r.URL.Path, a.Conn)
 		if err != nil {
 			log.Println("ERROR:", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -175,7 +177,7 @@ func (a *App) handleFunc(page Page) func(w http.ResponseWriter, r *http.Request)
 }
 
 //AddRoutes adds routes for app
-func (a *App) AddRoutes() error {
+func (a *App) AddRoutes(conn db.Conn) error {
 	//Add routes for Pages
 	for _, page := range a.Pages {
 		if len(page.Route) == 0 {
@@ -189,7 +191,7 @@ func (a *App) AddRoutes() error {
 	}
 	//Add routes for components, data and scripts
 	for _, comp := range a.Components {
-		comp.AddRoutesComponent(a.Mux)
+		comp.AddRoutesComponent(a.Mux, conn)
 		if a.Debug == true {
 			comp.AddRoutesScripts(a.Mux, a.RootPath)
 		}
@@ -239,18 +241,18 @@ func (a *App) AddRoutes() error {
 		zip, err := compress(bytes)
 		if err == nil {
 			bytes = zip
-			log.Println("compressed templates")
+			log.Println("Compressed templates")
+			w.Header().Set("Content-Encoding", "gzip")
 		} else {
 			log.Println("Error compressing templates:", err)
 		}
 		w.Header().Set("Cache-control", "max-age=90")
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.Header().Set("Content-Encoding", "gzip")
 		w.Write(bytes)
 	})
 
 	//Add API routes
-	AddAPIRoutes(a.Mux)
+	AddAPIRoutes(a.Mux, a.Conn)
 
 	return nil
 }
