@@ -72,29 +72,6 @@ func (a *App) Init() error {
 //LoadConfig loads json config file
 func (a *App) LoadConfig() error {
 	settings.Load(a.RootPath+a.ConfigFile, a)
-	// if path.Ext(a.RootPath+a.ConfigFile) == ".json" {
-	// 	log.Println("Loading config file:", a.RootPath+a.ConfigFile)
-	// 	bytes, err := ioutil.ReadFile(a.RootPath + a.ConfigFile)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	err = json.Unmarshal(bytes, a)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// } else if path.Ext(a.RootPath+a.ConfigFile) == ".yml" {
-	// 	log.Println("Loading config file:", a.RootPath+a.ConfigFile)
-	// 	yml, err := ioutil.ReadFile(a.RootPath + a.ConfigFile)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	err = yaml.Unmarshal(yml, a)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// } else {
-	// 	return errors.New("Invalid config file: " + a.RootPath + a.ConfigFile)
-	// }
 	if a.Debug == true {
 		a.Scripts = append(a.Scripts, a.RootPath+"/static/js/reload.socket.js")
 	}
@@ -133,8 +110,8 @@ func (a *App) loadComponentFolder(path string) error {
 		c.Name = strings.Replace(c.Name, "/", ".", -1)
 		a.Components[c.Name] = c
 		log.Println("Loading component:", c.Name, "from", c.Path)
-	} else {
-		log.Println("DEBUG: not a component:", c.Path)
+		// } else {
+		// 	log.Println("DEBUG: not a component:", c.Path)
 	}
 
 	//scan directories in component folder
