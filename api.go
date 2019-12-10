@@ -74,13 +74,13 @@ func AddAPIRoutes(mx *http.ServeMux, conn db.Conn) {
 		// log.Println("DEBUG r=", r)
 		switch r.Type {
 		case "query":
-			log.Println("Adding route for api: /api/" + r.Route + "/ (" + r.Type + ")")
+			log.Println("Adding route for api: /api/"+r.Route+"/ ("+r.Type+")", "auth:", r.Auth)
 			mx.HandleFunc("/api/"+r.Route+"/", queryHandler(*r, conn))
 		case "rest":
-			log.Println("Adding route for api: /api/" + r.Route + "/ (" + r.Type + ")")
+			log.Println("Adding route for api: /api/"+r.Route+"/ ("+r.Type+")", "auth:", r.Auth)
 			mx.HandleFunc("/api/"+r.Route+"/", restHandler(*r, conn))
 		case "graphql":
-			log.Println("Adding route for api: /api/" + r.Route + " (" + r.Type + ")")
+			log.Println("Adding route for api: /api/"+r.Route+" ("+r.Type+")", "auth:", r.Auth)
 			schema, err := api.BuildSchema(api.BuildSchemaArgs{
 				Tables: r.Tables,
 				Conn:   conn,
