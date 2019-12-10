@@ -54,10 +54,10 @@ func LoadRoutesYaml(path string) error {
 				if routes[rt.Route].Auth == false && rt.Auth == true {
 					routes[rt.Route].Auth = true
 				}
-				log.Println("DEBUG added tables to route", rt.Route, rt.Tables)
+				// log.Println("DEBUG added tables to route", rt.Route, rt.Tables)
 			} else {
 				routes[rt.Route] = rt
-				log.Println("DEBUG created route:", rt.Route)
+				// log.Println("DEBUG created route:", rt.Route)
 			}
 		} else {
 			routes[rt.Route] = rt
