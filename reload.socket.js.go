@@ -11,7 +11,7 @@ func reloadSocketScript() []byte {
 	}
 	return []byte(`
     if (m === undefined) var m = {};
-
+    m.reloadTimeout=1000;
     m.reloadSocket = (function () {
         var socket;
         function socketOpen(evt) {
@@ -23,7 +23,7 @@ func reloadSocketScript() []byte {
         function socketMessage(evt) {
             console.log("Reload socket message: " + evt.data);
             if (evt.data === "reload") {
-                window.location.reload();
+                setTimeout(function(){window.location.reload();}, m.reloadTimeout);
             }
         }
         function socketError(evt) {
