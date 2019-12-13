@@ -26,17 +26,16 @@ var templateCache []byte
 
 //App struct for app data
 type App struct {
-	Title          string   `json:"title" yaml:"title"`
-	ComponentsPath string   `json:"components_path" yaml:"components_path"`
-	StaticPath     string   `json:"static_path" yaml:"static_path"`
-	MainPath       string   `json:"main" yaml:"main"`
-	Scripts        []string `json:"scripts" yaml:"scripts"`
-	Debug          bool     `json:"debug" yaml:"debug"`
-	ConfigFile     string
-	Mux            *http.ServeMux
-	Components     map[string]Component
-	Pages          []Page
-	// MainTemplate    *templates.Template
+	Title           string   `json:"title" yaml:"title"`
+	ComponentsPath  string   `json:"components_path" yaml:"components_path"`
+	StaticPath      string   `json:"static_path" yaml:"static_path"`
+	MainPath        string   `json:"main" yaml:"main"`
+	Scripts         []string `json:"scripts" yaml:"scripts"`
+	Debug           bool     `json:"debug" yaml:"debug"`
+	ConfigFile      string
+	Mux             *http.ServeMux
+	Components      map[string]Component
+	Pages           []Page
 	TemplateManager templates.TemplateManager
 	JsCache         []byte
 	Port            string `json:"port" yaml:"port"`
@@ -169,13 +168,10 @@ func (a *App) handleFunc(page Page) func(w http.ResponseWriter, r *http.Request)
 		if err == nil {
 			locale = val
 		} else {
-			log.Println("DEBUG no locale in jwt payload")
 			if loc, ok := r.URL.Query()["locale"]; ok {
-				log.Println("DEBUG: locale in query")
 				locale = strings.Join(loc, "")
 			}
 		}
-		log.Println("DEBUG locale:", locale)
 		if page.Auth == true {
 			if jwt.Authenticated(r) == false {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -219,6 +215,7 @@ func (a *App) AddRoutes(conn db.Conn) error {
 	}
 
 	//Add routes for Pages
+	//TODO: localize routes
 	for _, page := range a.Pages {
 		if len(page.Route) == 0 {
 			return errors.New("No route given for page, check config")
