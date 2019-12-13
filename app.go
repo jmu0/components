@@ -24,6 +24,7 @@ import (
 type App struct {
 	Title          string   `json:"title" yaml:"title"`
 	ComponentsPath string   `json:"components_path" yaml:"components_path"`
+	StaticPath     string   `json:"static_path" yaml:"static_path"`
 	MainPath       string   `json:"main" yaml:"main"`
 	Scripts        []string `json:"scripts" yaml:"scripts"`
 	Debug          bool     `json:"debug" yaml:"debug"`
@@ -155,6 +156,25 @@ func (a *App) handleFunc(page Page) func(w http.ResponseWriter, r *http.Request)
 
 //AddRoutes adds routes for app
 func (a *App) AddRoutes(conn db.Conn) error {
+	//Add route for static path
+	if a.StaticPath != "" {
+		log.Println("Adding route for: favicon.ico")
+		a.Mux.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Cache-control", "max-age=86400")
+			http.FileServer(http.Dir(a.RootPath+a.StaticPath)).ServeHTTP(w, r)
+		})
+		log.Println("Adding route for:", a.StaticPath)
+		a.Mux.HandleFunc("/"+a.StaticPath+"/", func(w http.ResponseWriter, r *http.Request) {
+			log.Println("Serving:", r.URL.Path)
+			w.Header().Set("Cache-control", "max-age=90")
+			if a.RootPath == "" {
+				http.FileServer(http.Dir("./")).ServeHTTP(w, r)
+			} else {
+				http.FileServer(http.Dir(a.RootPath)).ServeHTTP(w, r)
+			}
+		})
+	}
+
 	//Add routes for Pages
 	for _, page := range a.Pages {
 		if len(page.Route) == 0 {

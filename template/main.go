@@ -3,41 +3,36 @@ package main
 import (
 	"log"
 	"net/http"
-	"os"
 
 	"github.com/jmu0/components"
+	"github.com/jmu0/dbAPI/api"
+	"github.com/jmu0/dbAPI/db"
+	"github.com/jmu0/settings"
 )
 
 var staticDir = "static"
 
 //var listenAddr = ":8282"
 
-func main() {
-	var RootPath string
-	if len(os.Args) > 1 {
-		RootPath = os.Args[1]
-	}
+var conn db.Conn
+var err error
+var mx *http.ServeMux
 
-	mx := http.NewServeMux()
-	mx.HandleFunc("/auth/", handleAuth)
-	mx.HandleFunc("/favicon.ico", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-control", "max-age=86400")
-		http.FileServer(http.Dir(RootPath+staticDir)).ServeHTTP(w, r)
-	})
-	mx.HandleFunc("/"+staticDir+"/", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("Serving:", r.URL.Path)
-		w.Header().Set("Cache-control", "max-age=90")
-		if RootPath == "" {
-			http.FileServer(http.Dir("./")).ServeHTTP(w, r)
-		} else {
-			http.FileServer(http.Dir(RootPath)).ServeHTTP(w, r)
-		}
-	})
+func main() {
+	s := map[string]string{
+		"root":   "./",
+		"static": "static",
+	}
+	settings.Load("config.yml", &s)
+	conn, err = api.GetConnection("config.yml")
+	mx = http.NewServeMux()
 
 	var app = components.App{
 		ConfigFile: "app.yml",
 		Mux:        mx,
-		RootPath:   RootPath,
+		RootPath:   s["root"],
+		StaticPath: s["static"],
+		Conn:       conn,
 	}
 	err := app.Init()
 	if err != nil {
