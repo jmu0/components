@@ -235,7 +235,7 @@ func (a *App) AddRoutes(conn db.Conn) error {
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		zip, err := compress(bytes)
+		zip, err := Compress(bytes)
 		if err == nil {
 			bytes = zip
 			log.Println("Compressed templates")
@@ -292,7 +292,7 @@ func (a *App) LoadScriptCache() {
 			a.JsCache = append(a.JsCache, loadJsFile(cmp.JsFiles[i])...)
 		}
 	}
-	comp, err := compress(a.JsCache)
+	comp, err := Compress(a.JsCache)
 	if err == nil {
 		a.JsCache = comp
 		log.Println("Compressed script cache")
@@ -317,7 +317,8 @@ func loadJsFile(path string) []byte {
 	return []byte(minified)
 }
 
-func compress(inp []byte) ([]byte, error) {
+//Compress compresses a []byte
+func Compress(inp []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	zw := gzip.NewWriter(&buf)
 	_, err := zw.Write(inp)
