@@ -16,14 +16,14 @@ type Part struct {
 }
 
 //Render renders part (recursive)
-func (p *Part) Render(components map[string]Component, path string, conn db.Conn) (string, error) {
+func (p *Part) Render(path, locale string, components map[string]Component, conn db.Conn) (string, error) {
 	var err error
 	var html, itemhtml, cmpName string
 	var data []map[string]interface{}
 	if cmp, ok := components[p.Name]; ok {
 		var partData = make(map[string]interface{})
 		for _, prt := range p.Components {
-			partData[prt.Name], err = prt.Render(components, path, conn)
+			partData[prt.Name], err = prt.Render(path, locale, components, conn)
 			if err != nil {
 				return "", err
 			}
@@ -53,10 +53,10 @@ func (p *Part) Render(components map[string]Component, path string, conn db.Conn
 			if len(data) == 1 {
 				d = data[0]
 			}
-			html, err = cmp.Render(p.Template, d)
+			html, err = cmp.Render(p.Template, locale, d)
 		} else if len(data) > 1 {
 			for i := range data {
-				itemhtml, err = cmp.Render(p.Template, data[i])
+				itemhtml, err = cmp.Render(p.Template, locale, data[i])
 				if err != nil {
 					return "", err
 				}

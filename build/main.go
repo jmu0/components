@@ -150,7 +150,7 @@ func printHelp() {
 func loadApp() components.App {
 	var err error
 	var app components.App
-	conf := "app.json" //TODO: load from yaml file
+	conf := "app.json"
 	if _, err := os.Stat("app.yml"); err == nil {
 		conf = "app.yml"
 	}

@@ -6,38 +6,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/jmu0/dbAPI/db"
 	"github.com/jmu0/templates"
 )
-
-//LoadComponent loads component from files in <path>
-func LoadComponent(path string) (Component, error) {
-	var c = Component{
-		Path: path,
-	}
-	if _, err := os.Stat(path + "/api.yml"); err == nil {
-		err = LoadRoutesYaml(path + "/api.yml")
-		if err != nil {
-			return c, err
-		}
-	}
-	lessfiles, err := filepath.Glob(c.Path + "/*.less")
-	if len(lessfiles) > 0 && err == nil {
-		c.LessFiles = lessfiles
-	}
-	jsfiles, err := filepath.Glob(c.Path + "/*.js")
-	if len(jsfiles) > 0 && err == nil {
-		c.JsFiles = jsfiles
-	}
-	c.TemplateManager = templates.TemplateManager{}
-	c.TemplateManager.Preload(path)
-	c.TemplateManager.LocalizationData = make([]map[string]interface{}, 0) //TODO: localization
-	return c, nil
-}
 
 //Component struct
 type Component struct {
@@ -90,13 +63,13 @@ func (c *Component) GetData(path string, conn db.Conn) ([]map[string]interface{}
 }
 
 //Render renders the component
-func (c *Component) Render(templateName string, data map[string]interface{}) (string, error) {
+func (c *Component) Render(templateName, locale string, data map[string]interface{}) (string, error) {
 	tmpl, err := c.TemplateManager.GetTemplate(templateName)
 	if err != nil {
 		return "", err
 	}
 	tmpl.Data = data
-	return c.TemplateManager.Render(&tmpl, "nl")
+	return c.TemplateManager.Render(&tmpl, locale)
 }
 
 //Render renders component (prevent closure in loop over templates)

@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -19,6 +21,8 @@ import (
 	"github.com/tdewolff/minify"
 	"github.com/tdewolff/minify/js"
 )
+
+var templateCache []byte
 
 //App struct for app data
 type App struct {
@@ -32,12 +36,13 @@ type App struct {
 	Mux            *http.ServeMux
 	Components     map[string]Component
 	Pages          []Page
-	MainTemplate   *templates.Template
-	JsCache        []byte
-	Port           string `json:"port" yaml:"port"`
-	StartTime      time.Time
-	RootPath       string
-	Conn           db.Conn
+	// MainTemplate    *templates.Template
+	TemplateManager templates.TemplateManager
+	JsCache         []byte
+	Port            string `json:"port" yaml:"port"`
+	StartTime       time.Time
+	RootPath        string
+	Conn            db.Conn
 }
 
 //Init initializes the app
@@ -57,6 +62,9 @@ func (a *App) Init() error {
 	if err != nil {
 		return err
 	}
+	if a.TemplateManager.Cache == nil {
+		a.TemplateManager.Cache = make(map[string]*templates.Template)
+	}
 	var main = templates.Template{}
 	main.Data = make(map[string]interface{})
 	err = main.Load(a.RootPath + a.ComponentsPath + "/" + a.MainPath)
@@ -65,7 +73,7 @@ func (a *App) Init() error {
 	}
 	main.Data["scripts"] = a.ScriptTags() //strings.Join(a.ScriptTags(), "\n")
 	main.Data["title"] = a.Title
-	a.MainTemplate = &main
+	a.TemplateManager.Cache["main"] = &main
 	a.StartTime = time.Now()
 	return nil
 }
@@ -99,7 +107,7 @@ func (a *App) LoadComponents() error {
 
 //loadComponentFolder recursive function to load components
 func (a *App) loadComponentFolder(path string) error {
-	c, err := LoadComponent(path)
+	c, err := a.loadComponent(path)
 	if err != nil {
 		return err
 	}
@@ -111,8 +119,6 @@ func (a *App) loadComponentFolder(path string) error {
 		c.Name = strings.Replace(c.Name, "/", ".", -1)
 		a.Components[c.Name] = c
 		log.Println("Loading component:", c.Name, "from", c.Path)
-		// } else {
-		// 	log.Println("DEBUG: not a component:", c.Path)
 	}
 
 	//scan directories in component folder
@@ -131,8 +137,45 @@ func (a *App) loadComponentFolder(path string) error {
 	return nil
 }
 
+//LoadComponent loads component from files in <path>
+func (a *App) loadComponent(path string) (Component, error) {
+	var c = Component{
+		Path: path,
+	}
+	if _, err := os.Stat(path + "/api.yml"); err == nil {
+		err = LoadRoutesYaml(path + "/api.yml")
+		if err != nil {
+			return c, err
+		}
+	}
+	lessfiles, err := filepath.Glob(c.Path + "/*.less")
+	if len(lessfiles) > 0 && err == nil {
+		c.LessFiles = lessfiles
+	}
+	jsfiles, err := filepath.Glob(c.Path + "/*.js")
+	if len(jsfiles) > 0 && err == nil {
+		c.JsFiles = jsfiles
+	}
+	c.TemplateManager = templates.TemplateManager{}
+	c.TemplateManager.Preload(path)
+	c.TemplateManager.LocalizationData = a.TemplateManager.LocalizationData
+	return c, nil
+}
+
 func (a *App) handleFunc(page Page) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
+		var locale = "nl"
+		val, err := jwt.GetPayloadValue(r, "locale")
+		if err == nil {
+			locale = val
+		} else {
+			log.Println("DEBUG no locale in jwt payload")
+			if loc, ok := r.URL.Query()["locale"]; ok {
+				log.Println("DEBUG: locale in query")
+				locale = strings.Join(loc, "")
+			}
+		}
+		log.Println("DEBUG locale:", locale)
 		if page.Auth == true {
 			if jwt.Authenticated(r) == false {
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -140,15 +183,15 @@ func (a *App) handleFunc(page Page) func(w http.ResponseWriter, r *http.Request)
 			}
 		}
 		log.Println("Rendering", page.Route)
-		content, err := page.Render(a.Components, r.URL.Path, a.Conn)
+		content, err := page.Render(r.URL.Path, locale, a.Components, a.Conn)
 		if err != nil {
 			log.Println("ERROR:", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
 			return
 		}
-		var tm = templates.TemplateManager{}
-		a.MainTemplate.Data["content"] = content
-		html, err := tm.Render(a.MainTemplate, "nl") //TODO: localize
+
+		a.TemplateManager.Cache["main"].Data["content"] = content
+		html, err := a.TemplateManager.Render(a.TemplateManager.Cache["main"], locale)
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Write([]byte(html))
 	}
@@ -215,37 +258,40 @@ func (a *App) AddRoutes(conn db.Conn) error {
 	//Add route for templates
 	log.Println("Adding route for template collection: /component/templates")
 	a.Mux.HandleFunc("/component/templates", func(w http.ResponseWriter, r *http.Request) {
-		//TODO template cache?
-		tmpls := make(map[string]string)
-		for _, comp := range a.Components {
-			split := strings.Split(comp.Name, ".")
-			for tmplname := range comp.TemplateManager.GetTemplates() {
-				tmpl, err := comp.TemplateManager.GetTemplate(tmplname)
-				if err == nil {
-					if len(split) > 1 {
-						tmpls[strings.Join(split[:len(split)-1], ".")+"."+tmplname] = tmpl.HTML
-					} else {
-						tmpls[tmplname] = tmpl.HTML
+		if len(templateCache) == 0 {
+			tmpls := make(map[string]string)
+			for _, comp := range a.Components {
+				split := strings.Split(comp.Name, ".")
+				for tmplname := range comp.TemplateManager.GetTemplates() {
+					tmpl, err := comp.TemplateManager.GetTemplate(tmplname)
+					if err == nil {
+						if len(split) > 1 {
+							tmpls[strings.Join(split[:len(split)-1], ".")+"."+tmplname] = tmpl.HTML
+						} else {
+							tmpls[tmplname] = tmpl.HTML
+						}
 					}
 				}
 			}
-		}
-		bytes, err := json.Marshal(tmpls)
-		if err != nil {
-			http.Error(w, "Internal server error", http.StatusInternalServerError)
-			return
-		}
-		zip, err := Compress(bytes)
-		if err == nil {
-			bytes = zip
-			log.Println("Compressed templates")
-			w.Header().Set("Content-Encoding", "gzip")
+			bytes, err := json.Marshal(tmpls)
+			if err != nil {
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+			bytes, err = Compress(bytes)
+			if err != nil {
+				http.Error(w, "Internal server error", http.StatusInternalServerError)
+				return
+			}
+			log.Println("Serving: /component/templates: Compressed templates")
+			templateCache = bytes
 		} else {
-			log.Println("Error compressing templates:", err)
+			log.Println("Serving: /component/templates from cache")
 		}
+		w.Header().Set("Content-Encoding", "gzip")
 		w.Header().Set("Cache-control", "max-age=90")
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.Write(bytes)
+		w.Write(templateCache)
 	})
 
 	//Add API routes
