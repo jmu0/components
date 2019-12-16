@@ -174,6 +174,15 @@ func (a *App) handleFunc(page Page) func(w http.ResponseWriter, r *http.Request)
 		}
 		if page.Auth == true {
 			if jwt.Authenticated(r) == false {
+				//check if there is a component called Login
+				if login, ok := a.Components["login"]; ok {
+					html, err := login.Render("", locale, make(map[string]interface{}))
+					if err == nil {
+						w.Write([]byte(html))
+						return
+					}
+				}
+
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
@@ -215,7 +224,7 @@ func (a *App) AddRoutes(conn db.Conn) error {
 	}
 
 	//Add routes for Pages
-	//TODO: localize routes
+	//TODO: localize route names
 	for _, page := range a.Pages {
 		if len(page.Route) == 0 {
 			return errors.New("No route given for page, check config")

@@ -66,10 +66,14 @@ func (c *Component) GetData(path string, conn db.Conn) ([]map[string]interface{}
 func (c *Component) Render(templateName, locale string, data map[string]interface{}) (string, error) {
 	tmpl, err := c.TemplateManager.GetTemplate(templateName)
 	if err != nil {
+		//get first template in cache if not found
+		for _, first := range c.TemplateManager.Cache {
+			return c.TemplateManager.Render(first, locale)
+		}
 		return "", err
 	}
 	tmpl.Data = data
-	return c.TemplateManager.Render(&tmpl, locale)
+	return c.TemplateManager.Render(tmpl, locale)
 }
 
 //Render renders component (prevent closure in loop over templates)
@@ -99,7 +103,7 @@ func handleFunc(c Component, templateName string, conn db.Conn) func(w http.Resp
 			if len(data) == 1 {
 				tmpl.Data = data[0]
 			}
-			html, err = c.TemplateManager.Render(&tmpl, "nl")
+			html, err = c.TemplateManager.Render(tmpl, "nl")
 			if err != nil {
 				log.Println("Error:", err)
 				http.NotFound(w, r)
@@ -108,7 +112,7 @@ func handleFunc(c Component, templateName string, conn db.Conn) func(w http.Resp
 		} else if len(data) > 1 {
 			for i := range data {
 				tmpl.Data = data[i]
-				itemhtml, err = c.TemplateManager.Render(&tmpl, "nl")
+				itemhtml, err = c.TemplateManager.Render(tmpl, "nl")
 				if err != nil {
 					log.Println("Error:", err)
 					http.NotFound(w, r)
