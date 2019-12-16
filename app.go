@@ -182,7 +182,6 @@ func (a *App) handleFunc(page Page) func(w http.ResponseWriter, r *http.Request)
 						return
 					}
 				}
-
 				http.Error(w, "Unauthorized", http.StatusUnauthorized)
 				return
 			}
@@ -224,7 +223,6 @@ func (a *App) AddRoutes(conn db.Conn) error {
 	}
 
 	//Add routes for Pages
-	//TODO: localize route names
 	for _, page := range a.Pages {
 		if len(page.Route) == 0 {
 			return errors.New("No route given for page, check config")
@@ -234,6 +232,21 @@ func (a *App) AddRoutes(conn db.Conn) error {
 		}
 		log.Println("Adding route for page:", page.Route)
 		a.Mux.HandleFunc(page.Route, a.handleFunc(page))
+		if len(page.Route) > 1 {
+			deRoute := a.TemplateManager.Translate(strings.Replace(page.Route, "/", "", -1), "de")
+			if deRoute != strings.Replace(page.Route, "/", "", -1) {
+				deRoute = "/" + deRoute + "/"
+				log.Println("Adding route for page:", deRoute)
+				a.Mux.HandleFunc(deRoute, a.handleFunc(page))
+			}
+			enRoute := a.TemplateManager.Translate(strings.Replace(page.Route, "/", "", -1), "en")
+			if enRoute != strings.Replace(page.Route, "/", "", -1) {
+				enRoute = "/" + enRoute + "/"
+				log.Println("Adding route for page:", enRoute)
+				a.Mux.HandleFunc(enRoute, a.handleFunc(page))
+			}
+		}
+
 	}
 	//Add routes for components, data and scripts
 	for _, comp := range a.Components {
