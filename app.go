@@ -174,7 +174,7 @@ func (a *App) handleFunc(page Page) func(w http.ResponseWriter, r *http.Request)
 		}
 		if page.Auth == true {
 			if jwt.Authenticated(r) == false {
-				//check if there is a component called Login
+				//render login component, if it exists
 				if login, ok := a.Components["login"]; ok {
 					html, err := login.Render("", locale, make(map[string]interface{}))
 					if err == nil {

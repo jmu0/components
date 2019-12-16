@@ -68,6 +68,7 @@ func (c *Component) Render(templateName, locale string, data map[string]interfac
 	if err != nil {
 		//get first template in cache if not found
 		for _, first := range c.TemplateManager.Cache {
+			first.Data = data
 			return c.TemplateManager.Render(first, locale)
 		}
 		return "", err
