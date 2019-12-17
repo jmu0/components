@@ -178,6 +178,7 @@ func (a *App) handleFunc(page Page) func(w http.ResponseWriter, r *http.Request)
 				if login, ok := a.Components["login"]; ok {
 					data := make(map[string]interface{})
 					data["error"] = r.Header.Get("error")
+					log.Println("Rendering login")
 					html, err := login.Render("", locale, data)
 					if err == nil {
 						w.Write([]byte(html))
