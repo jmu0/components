@@ -73,7 +73,10 @@ func (a *App) Init() error {
 	main.Data["scripts"] = a.ScriptTags() //strings.Join(a.ScriptTags(), "\n")
 	main.Data["title"] = a.Title
 	if len(a.TemplateManager.LocalizationData) > 0 {
-		main.Data["localization"] = a.TemplateManager.LocalizationData
+		bytes, err := json.Marshal(a.TemplateManager.LocalizationData)
+		if err == nil {
+			main.Data["localizationJSON"] = string(bytes)
+		}
 	}
 	a.TemplateManager.Cache["main"] = &main
 	a.StartTime = time.Now()
