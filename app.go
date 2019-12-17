@@ -81,7 +81,7 @@ func (a *App) Init() error {
 func (a *App) LoadConfig() error {
 	settings.Load(a.RootPath+a.ConfigFile, a)
 	if a.Debug == true {
-		a.Scripts = append(a.Scripts, a.RootPath+"/static/js/reload.socket.js")
+		a.Scripts = append(a.Scripts, "/static/js/reload.socket.js")
 	}
 	return nil
 }
