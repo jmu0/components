@@ -72,6 +72,9 @@ func (a *App) Init() error {
 	}
 	main.Data["scripts"] = a.ScriptTags() //strings.Join(a.ScriptTags(), "\n")
 	main.Data["title"] = a.Title
+	if len(a.TemplateManager.LocalizationData) > 0 {
+		main.Data["localization"] = a.TemplateManager.LocalizationData
+	}
 	a.TemplateManager.Cache["main"] = &main
 	a.StartTime = time.Now()
 	return nil
