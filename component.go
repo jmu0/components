@@ -3,7 +3,6 @@ package components
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"strings"
@@ -19,6 +18,7 @@ type Component struct {
 	TemplateManager templates.TemplateManager
 	LessFiles       []string
 	JsFiles         []string
+	DataFunc        DataFunc
 }
 
 //OldName returns name from path
@@ -30,36 +30,20 @@ func (c *Component) OldName() string {
 //GetData gets data. keys from url path
 func (c *Component) GetData(path string, conn db.Conn) ([]map[string]interface{}, error) {
 	var ret = make([]map[string]interface{}, 0)
-	var query, param string
-	if route, ok := routes[c.Name]; ok {
-		if route.Type == "query" && len(route.SQL) > 0 {
-			query = route.SQL
-		} else {
-			return ret, errors.New("No query found in route: " + route.Route)
-		}
-	} else {
-		return ret, nil
+	if c.DataFunc == nil {
+		return ret, errors.New("No DataFunc for component: " + c.Name)
 	}
+	var param string
 	spl := strings.Split(path, "/")
 	keys := strings.Split(spl[len(spl)-1], ":")
-	params := make([]interface{}, 0)
+	params := make([]string, 0)
 	for i := range keys {
 		param = db.Escape(strings.TrimSpace(keys[i]))
 		if len(param) > 0 {
 			params = append(params, param)
 		}
 	}
-	if len(params) > 0 {
-		query = fmt.Sprintf(query, params...)
-	}
-	res, err := conn.Query(query)
-	if err != nil {
-		return ret, err
-	}
-	if len(res) == 0 {
-		return ret, errors.New("Data not found")
-	}
-	return res, nil
+	return c.DataFunc(params, conn)
 }
 
 //Render renders the component
@@ -87,6 +71,7 @@ func handleFunc(c Component, templateName string, conn db.Conn) func(w http.Resp
 			http.NotFound(w, r)
 			return
 		}
+
 		data, err := c.GetData(r.URL.Path, conn)
 		if err != nil {
 

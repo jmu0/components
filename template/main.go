@@ -33,7 +33,10 @@ func main() {
 		RootPath:   s["root"],
 		StaticPath: s["static"],
 		Conn:       conn,
+		DataFuncs:  make(map[string]components.DataFunc),
 	}
+	app.DataFuncs["example"] = getExampleData
+
 	err := app.Init()
 	if err != nil {
 		log.Fatal(err)
@@ -41,4 +44,19 @@ func main() {
 	log.Println("Debug:", app.Debug)
 	log.Println("Listening on port", app.Port)
 	log.Fatal(http.ListenAndServe(app.Port, mx))
+}
+
+func getExampleData(keys []string, conn db.Conn) ([]map[string]interface{}, error) {
+	log.Println("DEBUG getExampleData:", keys)
+	var ret = make([]map[string]interface{}, 0)
+	var one = make(map[string]interface{})
+	if len(keys) > 0 {
+		one["testkey"] = keys[0]
+	}
+	if len(keys) > 1 {
+		one["namekey"] = keys[1]
+	}
+	one["idkey"] = "example from getExampleData func."
+	ret = append(ret, one)
+	return ret, nil
 }

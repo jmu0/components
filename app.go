@@ -22,6 +22,9 @@ import (
 	"github.com/tdewolff/minify/js"
 )
 
+//DataFunc function for getting data for component
+type DataFunc func(keys []string, conn db.Conn) ([]map[string]interface{}, error)
+
 var templateCache []byte
 
 //App struct for app data
@@ -42,6 +45,7 @@ type App struct {
 	StartTime       time.Time
 	RootPath        string
 	Conn            db.Conn
+	DataFuncs       map[string]DataFunc
 }
 
 //Init initializes the app
@@ -116,12 +120,15 @@ func (a *App) loadComponentFolder(path string) error {
 	if err != nil {
 		return err
 	}
-	if !(len(c.JsFiles) == 0 && len(c.LessFiles) == 0 && len(c.TemplateManager.GetTemplates()) == 0) { //not a template
+	if !(len(c.JsFiles) == 0 && len(c.LessFiles) == 0 && len(c.TemplateManager.GetTemplates()) == 0) { //is a component
 		c.Name = strings.Replace(path, a.RootPath+a.ComponentsPath, "", 1)
 		if c.Name[:1] == "/" {
 			c.Name = c.Name[1:]
 		}
 		c.Name = strings.Replace(c.Name, "/", ".", -1)
+		if f, ok := a.DataFuncs[c.Name]; ok {
+			c.DataFunc = f
+		}
 		a.Components[c.Name] = c
 		log.Println("Loading component:", c.Name, "from", c.Path)
 	}
