@@ -252,18 +252,17 @@ func (a *App) AddRoutes(conn db.Conn) error {
 		if len(page.Route) > 1 {
 			deRoute := a.TemplateManager.Translate(strings.Replace(page.Route, "/", "", -1), "de")
 			if deRoute != strings.Replace(page.Route, "/", "", -1) {
-				deRoute = "/" + deRoute + "/"
+				deRoute = "/" + strings.Replace(deRoute, " ", "", -1) + "/"
 				log.Println("Adding route for page:", deRoute)
 				a.Mux.HandleFunc(deRoute, a.handleFunc(page))
 			}
 			enRoute := a.TemplateManager.Translate(strings.Replace(page.Route, "/", "", -1), "en")
 			if enRoute != strings.Replace(page.Route, "/", "", -1) {
-				enRoute = "/" + enRoute + "/"
+				enRoute = "/" + strings.Replace(enRoute, " ", "", -1) + "/"
 				log.Println("Adding route for page:", enRoute)
 				a.Mux.HandleFunc(enRoute, a.handleFunc(page))
 			}
 		}
-
 	}
 	//Add routes for components, data and scripts
 	for _, comp := range a.Components {
