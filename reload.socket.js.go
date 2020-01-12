@@ -1,14 +1,10 @@
 package components
 
-import (
-	"os"
-)
-
 func reloadSocketScript() []byte {
-	hostname, err := os.Hostname()
-	if err != nil {
-		hostname = "localhost"
-	}
+	// hostname, err := os.Hostname()
+	// if err != nil {
+	// 	hostname = "localhost"
+	// }
 	return []byte(`
     if (m === undefined) var m = {};
     m.reloadTimeout=1000;
@@ -30,8 +26,13 @@ func reloadSocketScript() []byte {
             console.log("Reload socket Error " + JSON.stringify(evt));
         }
         function socketConnect() {
-            var url;
-            url = "ws://` + hostname + `:9876/ws";
+            var url = window.location.host.split(":");
+            url = url[0];
+            if (window.location.protocol==="https:") {
+                url = "wss://"+url+":9876/ws";
+            } else {
+                url = "ws://"+url+":9876/ws";
+            }
             socket = new WebSocket(url);
             socket.onopen = socketOpen;
             socket.onclose = socketClose;
