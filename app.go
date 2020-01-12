@@ -76,6 +76,11 @@ func (a *App) Init() error {
 	}
 	main.Data["scripts"] = a.ScriptTags() //strings.Join(a.ScriptTags(), "\n")
 	main.Data["title"] = a.Title
+	if a.Debug == true {
+		main.Data["debug"] = "true"
+	} else {
+		main.Data["debug"] = "false"
+	}
 	if len(a.TemplateManager.LocalizationData) > 0 {
 		bytes, err := json.Marshal(a.TemplateManager.LocalizationData)
 		if err == nil {
