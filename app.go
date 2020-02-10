@@ -351,7 +351,8 @@ func (a *App) ScriptTags() string {
 		}
 		for _, cmp := range a.Components {
 			for i = 0; i < len(cmp.JsFiles); i++ {
-				html = "<script src=\"/" + cmp.JsFiles[i]
+				html = "<script src=\"/" + strings.Replace(cmp.JsFiles[i], a.RootPath, "", -1)
+				// log.Fatal(strings.Replace(cmp.JsFiles[i], a.RootPath, "", -1))
 				html += "\"></script>\n"
 				ret += html
 			}
