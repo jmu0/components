@@ -30,7 +30,8 @@ var templateCache []byte
 //App struct for app data
 type App struct {
 	Title           string   `json:"title" yaml:"title"`
-	ComponentsPath  string   `json:"components_path" yaml:"components_path"`
+	ComponentsPath  string   `json:"components_path" yaml:"components_path"` //use this or componentpaths
+	ComponentPaths  []string `json:"componentpaths" yaml:"componentpaths"`   //use this or componentspath
 	StaticPath      string   `json:"static_path" yaml:"static_path"`
 	MainPath        string   `json:"main" yaml:"main"`
 	Scripts         []string `json:"scripts" yaml:"scripts"`
@@ -75,6 +76,7 @@ func (a *App) Init() error {
 		return err
 	}
 	main.Data["scripts"] = a.ScriptTags() //strings.Join(a.ScriptTags(), "\n")
+	main.Data["templates"] = a.TemplateTags()
 	main.Data["title"] = a.Title
 	if a.Debug == true {
 		main.Data["debug"] = "true"
@@ -104,16 +106,27 @@ func (a *App) LoadConfig() error {
 //LoadComponents loads components from path
 func (a *App) LoadComponents() error {
 	a.Components = make(map[string]Component)
-	files, err := ioutil.ReadDir(a.RootPath + a.ComponentsPath)
-	if err != nil {
-		return err
+	var paths []string
+	if a.ComponentPaths != nil {
+		paths = a.ComponentPaths
+	} else {
+		paths = append(paths, a.ComponentsPath)
 	}
-	for _, file := range files {
-		if file.IsDir() {
-			err = a.loadComponentFolder(a.RootPath + a.ComponentsPath + "/" + file.Name())
-			if err != nil {
-				return err
+	for _, path := range paths {
+		files, err := ioutil.ReadDir(a.RootPath + path)
+		if err != nil {
+			return err
+		}
+		for _, file := range files {
+			if file.IsDir() {
+				err = a.loadComponentFolder(a.RootPath + path + "/" + file.Name())
+				if err != nil {
+					return err
+				}
 			}
+		}
+		if path != "components" { //or dirs in /components get loaded twice
+			a.loadComponentFolder(a.RootPath + path)
 		}
 	}
 	return nil
@@ -126,16 +139,35 @@ func (a *App) loadComponentFolder(path string) error {
 		return err
 	}
 	if !(len(c.JsFiles) == 0 && len(c.LessFiles) == 0 && len(c.TemplateManager.GetTemplates()) == 0) { //is a component
-		c.Name = strings.Replace(path, a.RootPath+a.ComponentsPath, "", 1)
-		if c.Name[:1] == "/" {
-			c.Name = c.Name[1:]
+		if a.ComponentsPath != "" {
+			c.Name = strings.Replace(path, a.RootPath+a.ComponentsPath, "", 1)
+		} else {
+			c.Name = strings.Replace(path, a.RootPath, "", 1)
+			for _, cmppath := range a.ComponentPaths {
+				if strings.Index(c.Name, cmppath) == 0 {
+					if c.Name == cmppath {
+						spl := strings.Split(cmppath, "components")
+						if len(spl) > 0 {
+							c.Name = spl[1]
+						}
+					} else {
+						c.Name = strings.Replace(c.Name, cmppath, "", 1)
+					}
+					break
+				}
+			}
 		}
-		c.Name = strings.Replace(c.Name, "/", ".", -1)
-		if f, ok := a.DataFuncs[c.Name]; ok {
-			c.DataFunc = f
+		if len(c.Name) > 0 { //can be "" if path == components
+			if c.Name[:1] == "/" {
+				c.Name = c.Name[1:]
+			}
+			c.Name = strings.Replace(c.Name, "/", ".", -1)
+			if f, ok := a.DataFuncs[c.Name]; ok {
+				c.DataFunc = f
+			}
+			a.Components[c.Name] = c
+			log.Println("Loading component:", c.Name, "from", c.Path)
 		}
-		a.Components[c.Name] = c
-		log.Println("Loading component:", c.Name, "from", c.Path)
 	}
 
 	//scan directories in component folder
@@ -145,6 +177,7 @@ func (a *App) loadComponentFolder(path string) error {
 	}
 	for _, file := range files {
 		if file.IsDir() {
+			log.Println("DEBUG scanning:", file.Name(), "in", path)
 			err = a.loadComponentFolder(path + "/" + file.Name())
 			if err != nil {
 				return err
@@ -342,7 +375,7 @@ func (a *App) AddRoutes(conn db.Conn) error {
 
 //ScriptTags returns html script tags for javascript files
 func (a *App) ScriptTags() string {
-	var ret string
+	var ret, src string
 	var i int
 	var html string
 	if a.Debug == true {
@@ -351,14 +384,38 @@ func (a *App) ScriptTags() string {
 		}
 		for _, cmp := range a.Components {
 			for i = 0; i < len(cmp.JsFiles); i++ {
-				html = "<script src=\"/" + strings.Replace(cmp.JsFiles[i], a.RootPath, "", -1)
-				// log.Fatal(strings.Replace(cmp.JsFiles[i], a.RootPath, "", -1))
-				html += "\"></script>\n"
+				src = strings.Replace(cmp.JsFiles[i], a.RootPath, "", -1)
+				html = "<script src=\"/" + src + "\""
+				if strings.Contains(src, "index") == false {
+					html += "\" type=\"module\""
+				}
+				html += "></script>\n"
 				ret += html
 			}
 		}
 	} else {
 		ret = "<script src=\"/static/js/" + a.Title + ".js\"></script>\n"
+	}
+	return ret
+}
+
+//TemplateTags returns <template> tags for each component
+func (a *App) TemplateTags() string {
+	var ret string
+	var id string
+	for _, comp := range a.Components {
+		split := strings.Split(comp.Name, ".")
+		for tmplname := range comp.TemplateManager.GetTemplates() {
+			tmpl, err := comp.TemplateManager.GetTemplate(tmplname)
+			if err == nil {
+				if len(split) > 1 {
+					id = strings.Join(split[:len(split)-1], ".") + "." + tmplname
+				} else {
+					id = tmplname
+				}
+				ret += "<template id=\"" + id + "\">" + tmpl.HTML + "</template>\n"
+			}
+		}
 	}
 	return ret
 }

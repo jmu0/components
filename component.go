@@ -2,7 +2,6 @@ package components
 
 import (
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 	"strings"
@@ -31,7 +30,7 @@ func (c *Component) OldName() string {
 func (c *Component) GetData(path string, conn db.Conn) ([]map[string]interface{}, error) {
 	var ret = make([]map[string]interface{}, 0)
 	if c.DataFunc == nil {
-		return ret, errors.New("No DataFunc for component: " + c.Name)
+		return ret, nil //errors.New("No DataFunc for component: " + c.Name)
 	}
 	var param string
 	spl := strings.Split(path, "/")
