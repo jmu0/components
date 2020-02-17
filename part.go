@@ -64,7 +64,7 @@ func (p *Part) Render(path, locale string, components map[string]Component, conn
 			}
 		}
 		cmpName = strings.ToLower(p.Name)
-		html = "<" + cmpName + " data-component='" + cmpName + "'>" + html + "</" + cmpName + ">"
+		html = "<" + cmpName + " data-component='" + cmpName + "' rendered>" + html + "</" + cmpName + ">"
 		return html, err
 	}
 	return "", errors.New("Component not found for part: " + p.Name)
