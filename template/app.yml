@@ -1,6 +1,8 @@
 title: Example
 components_path: components
 debug: true
+main-sass-file: static/css/main.scss"
+main-css-file: static/css/style.css"
 scripts:
     - /static/ui/js/ui.js
     - /static/ui/js/compatibility.js

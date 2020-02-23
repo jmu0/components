@@ -47,6 +47,8 @@ type App struct {
 	RootPath        string
 	Conn            db.Conn
 	DataFuncs       map[string]DataFunc
+	MainSassFile    string `json:"main-sass-file" yaml:"main-sass-file"`
+	MainCSSFile     string `json:"main-css-file" yaml:"main-css-file"`
 }
 
 //Init initializes the app
@@ -100,6 +102,12 @@ func (a *App) LoadConfig() error {
 	if a.Debug == true {
 		a.Scripts = append(a.Scripts, "/static/js/reload.socket.js")
 	}
+	if a.MainCSSFile == "" {
+		a.MainCSSFile = "static/css/style.css"
+	}
+	if a.MainSassFile == "" {
+		a.MainSassFile = "static/css/main.scss"
+	}
 	return nil
 }
 
@@ -138,7 +146,7 @@ func (a *App) loadComponentFolder(path string) error {
 	if err != nil {
 		return err
 	}
-	if !(len(c.JsFiles) == 0 && len(c.LessFiles) == 0 && len(c.TemplateManager.GetTemplates()) == 0) { //is a component
+	if !(len(c.JsFiles) == 0 && len(c.StyleFiles) == 0 && len(c.TemplateManager.GetTemplates()) == 0) { //is a component
 		if a.ComponentsPath != "" {
 			c.Name = strings.Replace(path, a.RootPath+a.ComponentsPath, "", 1)
 		} else {
@@ -198,9 +206,14 @@ func (a *App) loadComponent(path string) (Component, error) {
 			return c, err
 		}
 	}
-	lessfiles, err := filepath.Glob(c.Path + "/*.less")
-	if len(lessfiles) > 0 && err == nil {
-		c.LessFiles = lessfiles
+	c.StyleFiles = make([]string, 0)
+	stylefiles, err := filepath.Glob(c.Path + "/*.less")
+	if len(stylefiles) > 0 && err == nil {
+		c.StyleFiles = append(c.StyleFiles, stylefiles...)
+	}
+	stylefiles, err = filepath.Glob(c.Path + "/*.scss")
+	if len(stylefiles) > 0 && err == nil {
+		c.StyleFiles = append(c.StyleFiles, stylefiles...)
 	}
 	jsfiles, err := filepath.Glob(c.Path + "/*.js")
 	if len(jsfiles) > 0 && err == nil {

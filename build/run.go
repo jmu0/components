@@ -91,6 +91,8 @@ func checkExtension(file string) bool {
 		return true
 	case ".yml":
 		return true
+	case ".scss":
+		return true
 	default:
 		return false
 	}
@@ -113,6 +115,8 @@ func watch() {
 					kill()
 					if filepath.Ext(event.Name()) == ".go" {
 						build()
+					} else if filepath.Ext(event.Name()) == ".scss" {
+						buildSass()
 					}
 					start()
 					reload()
@@ -150,4 +154,23 @@ func socket() {
 func reload() {
 	log.Println("Reloading browser...")
 	SendSocketMessage([]byte("reload"))
+}
+
+func buildSass() {
+	log.Println("Compiling sass:", "sass", app.MainSassFile+":"+app.MainCSSFile)
+
+	// cmd = exec.Command("sass", app.MainSassFile+":"+app.MainCSSFile)
+	// if err := cmd.Run(); err != nil {
+	// 	log.Println(err)
+	// }
+
+	cmd = exec.Command("sass", app.MainSassFile+":"+app.MainCSSFile)
+	var stdBuffer bytes.Buffer
+	mw := io.MultiWriter(os.Stdout, &stdBuffer)
+	cmd.Stdout = mw
+	cmd.Stderr = mw
+	if err := cmd.Start(); err != nil {
+		log.Println("Sass Error:", err)
+	}
+	log.Println(stdBuffer.String())
 }

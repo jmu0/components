@@ -13,6 +13,8 @@ import (
 	"github.com/tdewolff/minify/js"
 )
 
+var app components.App
+
 func main() {
 	var content string
 	var err error
@@ -22,7 +24,7 @@ func main() {
 	}
 	switch os.Args[1] {
 	case "less":
-		app := loadApp()
+		app = loadApp()
 		var i, j int
 		outPath := "static/css/components.less"
 		mainPath := "main.less"
@@ -35,15 +37,16 @@ func main() {
 		backCount := len(strings.Split(outPath, "/")) - 1
 		content = "// main: " + mainPath + "\n"
 		for _, cmp := range app.Components {
-			if len(cmp.LessFiles) > 0 {
-				for i = 0; i < len(cmp.LessFiles); i++ {
-					content += "@import \""
-					for j = 0; j < backCount; j++ {
-						content += "../"
+			if len(cmp.StyleFiles) > 0 {
+				for i = 0; i < len(cmp.StyleFiles); i++ {
+					if filepath.Ext(cmp.StyleFiles[i]) == ".less" {
+						content += "@import \""
+						for j = 0; j < backCount; j++ {
+							content += "../"
+						}
+						fmt.Println("Adding", cmp.StyleFiles[i])
+						content += cmp.StyleFiles[i] + "\";\n"
 					}
-					fmt.Println("Adding", cmp.LessFiles[i])
-					content += cmp.LessFiles[i] + "\";\n"
-
 				}
 			}
 		}
@@ -51,8 +54,43 @@ func main() {
 		if err != nil {
 			fmt.Println("ERROR:", err)
 		}
+	case "sass":
+		app = loadApp()
+		var i, j int
+		outPath := "static/css/_components.scss"
+		// mainPath := "main.scss"
+		if len(os.Args) > 2 {
+			outPath = os.Args[2]
+		}
+		// if len(os.Args) == 4 {
+		// 	mainPath = os.Args[3]
+		// }
+		backCount := len(strings.Split(outPath, "/")) - 1
+		// content = "// main: " + mainPath + "\n"
+		for _, cmp := range app.Components {
+			if len(cmp.StyleFiles) > 0 {
+				for i = 0; i < len(cmp.StyleFiles); i++ {
+					if filepath.Ext(cmp.StyleFiles[i]) == ".scss" {
+						content += "@import \""
+						for j = 0; j < backCount; j++ {
+							content += "../"
+						}
+						name := cmp.StyleFiles[i]
+						name = strings.Replace(name, "/_", "/", 1)
+						name = strings.Replace(name, ".scss", "", 1)
+						fmt.Println("Adding", cmp.StyleFiles[i])
+						content += name + "\";\n"
+					}
+				}
+			}
+		}
+		err := ioutil.WriteFile(outPath, []byte(content), 0770)
+		if err != nil {
+			fmt.Println("ERROR:", err)
+		}
+		buildSass()
 	case "js":
-		app := loadApp()
+		app = loadApp()
 		outPath := "static/js/"
 		var debug = false
 		var j int
@@ -136,6 +174,7 @@ func main() {
 		defer func() {
 			log.Println("DEFERRING...")
 		}()
+		app = loadApp()
 		run()
 	default:
 		printHelp()

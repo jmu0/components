@@ -15,7 +15,7 @@ type Component struct {
 	Path            string
 	Name            string
 	TemplateManager templates.TemplateManager
-	LessFiles       []string
+	StyleFiles      []string
 	JsFiles         []string
 	DataFunc        DataFunc
 }
