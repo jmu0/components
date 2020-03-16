@@ -400,7 +400,7 @@ func (a *App) ScriptTags() string {
 				src = strings.Replace(cmp.JsFiles[i], a.RootPath, "", -1)
 				html = "<script src=\"/" + src + "\""
 				if strings.Contains(src, "index") == false {
-					html += "\" type=\"module\""
+					html += " type=\"module\""
 				}
 				html += "></script>\n"
 				ret += html
