@@ -393,7 +393,11 @@ func (a *App) ScriptTags() string {
 	var html string
 	if a.Debug == true {
 		for _, scriptPath := range a.Scripts {
-			ret += "<script src=\"" + scriptPath + "\"></script>\n"
+			ret += "<script src=\"" + scriptPath + "\""
+			if strings.Contains(scriptPath, "index") == false && strings.Contains(scriptPath, "reload.socket") == false {
+				ret += " type=\"module\""
+			}
+			ret += "></script>\n"
 		}
 		for _, cmp := range a.Components {
 			for i = 0; i < len(cmp.JsFiles); i++ {
