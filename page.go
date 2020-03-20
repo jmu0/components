@@ -10,10 +10,11 @@ type Page struct {
 }
 
 //Render renders the components
-func (p *Page) Render(path, locale string, components map[string]Component, conn db.Conn) (string, error) {
+// func (p *Page) Render(path, locale string, components map[string]Component, conn db.Conn) (string, error) {
+func (p *Page) Render(args map[string]string, components map[string]Component, conn db.Conn) (string, error) {
 	var html string
 	for _, comp := range p.Components {
-		cmphtml, err := comp.Render(path, locale, components, conn)
+		cmphtml, err := comp.Render(args, components, conn)
 		if err != nil {
 			return "", err
 		}

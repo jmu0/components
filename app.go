@@ -23,7 +23,7 @@ import (
 )
 
 //DataFunc function for getting data for component
-type DataFunc func(keys []string, conn db.Conn) ([]map[string]interface{}, error)
+type DataFunc func(args map[string]string, keys []string, conn db.Conn) ([]map[string]interface{}, error)
 
 var templateCache []byte
 
@@ -227,15 +227,7 @@ func (a *App) loadComponent(path string) (Component, error) {
 
 func (a *App) handleFunc(page Page) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var locale = "nl"
-		val, err := jwt.GetPayloadValue(r, "locale")
-		if err == nil {
-			locale = val
-		} else {
-			if loc, ok := r.URL.Query()["locale"]; ok {
-				locale = strings.Join(loc, "")
-			}
-		}
+		args := GetRequestArgs(r)
 		if page.Auth == true {
 			if jwt.Authenticated(r) == false {
 				//render login component, if it exists
@@ -244,7 +236,7 @@ func (a *App) handleFunc(page Page) func(w http.ResponseWriter, r *http.Request)
 					data["error"] = r.Header.Get("error")
 					data["uri"] = r.URL.Path
 					log.Println("Rendering login")
-					html, err := login.Render("", locale, data)
+					html, err := login.Render("", args, data)
 					if err == nil {
 						w.Write([]byte(html))
 						return
@@ -255,7 +247,7 @@ func (a *App) handleFunc(page Page) func(w http.ResponseWriter, r *http.Request)
 			}
 		}
 		log.Println("Rendering", page.Route)
-		content, err := page.Render(r.URL.Path, locale, a.Components, a.Conn)
+		content, err := page.Render(args, a.Components, a.Conn)
 		if err != nil {
 			log.Println("ERROR:", err)
 			http.Error(w, "Internal server error", http.StatusInternalServerError)
@@ -263,7 +255,7 @@ func (a *App) handleFunc(page Page) func(w http.ResponseWriter, r *http.Request)
 		}
 
 		a.TemplateManager.Cache["main"].Data["content"] = content
-		html, err := a.TemplateManager.Render(a.TemplateManager.Cache["main"], locale)
+		html, err := a.TemplateManager.Render(a.TemplateManager.Cache["main"], args["locale"])
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Write([]byte(html))
 	}
@@ -490,4 +482,27 @@ func Compress(inp []byte) ([]byte, error) {
 		return inp, err
 	}
 	return []byte(buf.String()), nil
+}
+
+//GetRequestArgs build arguments from http request
+func GetRequestArgs(r *http.Request) map[string]string {
+	var err error
+	payload := make(map[string]string)
+	args := make(map[string]string)
+	args["locale"] = "nl"
+	args["path"] = r.URL.Path
+	//var locale = "nl"
+	token, err := jwt.GetToken(r)
+	if err == nil {
+		payload, err = jwt.GetPayload(token)
+		if err == nil {
+			for k, v := range payload {
+				args[k] = v
+			}
+		}
+	}
+	if loc, ok := r.URL.Query()["locale"]; ok {
+		args["locale"] = strings.Join(loc, "")
+	}
+	return args
 }

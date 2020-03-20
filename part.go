@@ -16,14 +16,14 @@ type Part struct {
 }
 
 //Render renders part (recursive)
-func (p *Part) Render(path, locale string, components map[string]Component, conn db.Conn) (string, error) {
+func (p *Part) Render(args map[string]string, components map[string]Component, conn db.Conn) (string, error) {
 	var err error
 	var html, itemhtml, cmpName string
 	var data []map[string]interface{}
 	if cmp, ok := components[p.Name]; ok {
 		var partData = make(map[string]interface{})
 		for _, prt := range p.Components {
-			partData[prt.Name], err = prt.Render(path, locale, components, conn)
+			partData[prt.Name], err = prt.Render(args, components, conn)
 			if err != nil {
 				return "", err
 			}
@@ -34,7 +34,7 @@ func (p *Part) Render(path, locale string, components map[string]Component, conn
 				break
 			}
 		}
-		data, err = cmp.GetData(path, conn)
+		data, err = cmp.GetData(args, conn)
 		if err != nil || len(data) == 0 {
 			data = make([]map[string]interface{}, 0)
 			data = append(data, partData)
@@ -53,10 +53,10 @@ func (p *Part) Render(path, locale string, components map[string]Component, conn
 			if len(data) == 1 {
 				d = data[0]
 			}
-			html, err = cmp.Render(p.Template, locale, d)
+			html, err = cmp.Render(p.Template, args, d)
 		} else if len(data) > 1 {
 			for i := range data {
-				itemhtml, err = cmp.Render(p.Template, locale, data[i])
+				itemhtml, err = cmp.Render(p.Template, args, data[i])
 				if err != nil {
 					return "", err
 				}

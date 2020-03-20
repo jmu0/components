@@ -27,13 +27,13 @@ func (c *Component) OldName() string {
 }
 
 //GetData gets data. keys from url path
-func (c *Component) GetData(path string, conn db.Conn) ([]map[string]interface{}, error) {
+func (c *Component) GetData(args map[string]string, conn db.Conn) ([]map[string]interface{}, error) {
 	var ret = make([]map[string]interface{}, 0)
 	if c.DataFunc == nil {
 		return ret, nil //errors.New("No DataFunc for component: " + c.Name)
 	}
 	var param string
-	spl := strings.Split(path, "/")
+	spl := strings.Split(args["path"], "/")
 	keys := strings.Split(spl[len(spl)-1], ":")
 	params := make([]string, 0)
 	for i := range keys {
@@ -42,22 +42,22 @@ func (c *Component) GetData(path string, conn db.Conn) ([]map[string]interface{}
 			params = append(params, param)
 		}
 	}
-	return c.DataFunc(params, conn)
+	return c.DataFunc(args, params, conn)
 }
 
 //Render renders the component
-func (c *Component) Render(templateName, locale string, data map[string]interface{}) (string, error) {
+func (c *Component) Render(templateName string, args map[string]string, data map[string]interface{}) (string, error) {
 	tmpl, err := c.TemplateManager.GetTemplate(templateName)
 	if err != nil {
 		//get first template in cache if not found
 		for _, first := range c.TemplateManager.Cache {
 			first.Data = data
-			return c.TemplateManager.Render(first, locale)
+			return c.TemplateManager.Render(first, args["locale"])
 		}
 		return "", err
 	}
 	tmpl.Data = data
-	return c.TemplateManager.Render(tmpl, locale)
+	return c.TemplateManager.Render(tmpl, args["locale"])
 }
 
 //Render renders component (prevent closure in loop over templates)
@@ -70,8 +70,7 @@ func handleFunc(c Component, templateName string, conn db.Conn) func(w http.Resp
 			http.NotFound(w, r)
 			return
 		}
-
-		data, err := c.GetData(r.URL.Path, conn)
+		data, err := c.GetData(GetRequestArgs(r), conn)
 		if err != nil {
 
 			log.Println("Query error:", err)
@@ -114,7 +113,7 @@ func handleFunc(c Component, templateName string, conn db.Conn) func(w http.Resp
 
 func handleFuncData(c Component, conn db.Conn) func(w http.ResponseWriter, r *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
-		data, err := c.GetData(r.URL.Path, conn)
+		data, err := c.GetData(GetRequestArgs(r), conn)
 		if err != nil {
 			log.Println("Error handle data:", err)
 			http.NotFound(w, r)
