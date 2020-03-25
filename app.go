@@ -9,6 +9,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -49,6 +50,7 @@ type App struct {
 	DataFuncs       map[string]DataFunc
 	MainSassFile    string `json:"main-sass-file" yaml:"main-sass-file"`
 	MainCSSFile     string `json:"main-css-file" yaml:"main-css-file"`
+	Webpack         bool   `json:"webpack" yaml:"webpack"`
 }
 
 //Init initializes the app
@@ -432,18 +434,28 @@ func (a *App) TemplateTags() string {
 //LoadScriptCache loads and crushes js files
 func (a *App) LoadScriptCache() {
 	a.JsCache = []byte("")
-	for _, scriptPath := range a.Scripts {
-		if scriptPath[0] == '/' {
-			scriptPath = scriptPath[1:]
+	if a.Webpack == false {
+		for _, scriptPath := range a.Scripts {
+			if scriptPath[0] == '/' {
+				scriptPath = scriptPath[1:]
+			}
+			scriptPath = a.RootPath + scriptPath
+			a.JsCache = append(a.JsCache, loadJsFile(scriptPath)...)
 		}
-		scriptPath = a.RootPath + scriptPath
-		a.JsCache = append(a.JsCache, loadJsFile(scriptPath)...)
-	}
-	var i int
-	for _, cmp := range a.Components {
-		for i = 0; i < len(cmp.JsFiles); i++ {
-			a.JsCache = append(a.JsCache, loadJsFile(cmp.JsFiles[i])...)
+		var i int
+		for _, cmp := range a.Components {
+			for i = 0; i < len(cmp.JsFiles); i++ {
+				a.JsCache = append(a.JsCache, loadJsFile(cmp.JsFiles[i])...)
+			}
 		}
+	} else {
+		scriptfile := "./static/js/" + a.Title + ".js"
+		content, err := ioutil.ReadFile(scriptfile)
+		if err != nil {
+			log.Println("Error reading file:", scriptfile, err)
+			content = []byte("")
+		}
+		a.JsCache = content
 	}
 	comp, err := Compress(a.JsCache)
 	if err == nil {
@@ -505,4 +517,34 @@ func GetRequestArgs(r *http.Request) map[string]string {
 		args["locale"] = strings.Join(loc, "")
 	}
 	return args
+}
+
+//RunWebpack runs webpack command
+func (a *App) RunWebpack() {
+	var cmd []string
+	cmd = append(cmd, "webpack")
+	if a.Debug == true {
+		cmd = append(cmd, "--mode=development")
+	} else {
+		cmd = append(cmd, "--mode=production")
+	}
+	cmd = append(cmd, "--entry=./static/js/index.js")
+	var outfile string
+	if a.Title == "" {
+		outfile = "app.js"
+	} else {
+		outfile = a.Title + ".js"
+	}
+	outPath, err := os.Getwd()
+	if err != nil {
+		log.Fatal(err)
+	}
+	cmd = append(cmd, "--output-filename="+outfile)
+	cmd = append(cmd, "--output-path="+outPath+"/static/js")
+	log.Println("Webpack command: npx", strings.Join(cmd, " "))
+	out, err := exec.Command("npx", cmd...).Output()
+	if err != nil {
+		log.Fatal("ERROR:", err, "OUTPUT:", string(out))
+	}
+	log.Println("Webpack output:", string(out))
 }

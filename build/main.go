@@ -9,8 +9,6 @@ import (
 	"strings"
 
 	"github.com/jmu0/components"
-	"github.com/tdewolff/minify"
-	"github.com/tdewolff/minify/js"
 )
 
 var app components.App
@@ -91,7 +89,8 @@ func main() {
 		buildSass()
 	case "js":
 		app = loadApp()
-		outFile := "static/js/components.js"
+		componentsFile := "static/js/components.js"
+		indexFile := "static/js/index.js"
 		content = ""
 		for _, cmp := range app.Components {
 			if len(cmp.JsFiles) > 0 {
@@ -101,11 +100,31 @@ func main() {
 				content += "import \"../../" + cmp.JsFiles[i] + "\";\n"
 			}
 		}
-		err = ioutil.WriteFile(outFile, []byte(content), 0770)
+		err = ioutil.WriteFile(componentsFile, []byte(content), 0770)
 		if err != nil {
 			fmt.Println("ERROR:", err)
 		}
-		runWebpack()
+		importComponents := "import \"./components.js\";"
+		if _, err := os.Stat(indexFile); os.IsNotExist(err) {
+			err = ioutil.WriteFile(indexFile, []byte(importComponents), 0770)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		content, err := ioutil.ReadFile(indexFile)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if strings.Contains(string(content), importComponents) == false {
+			content = []byte(importComponents + "\n" + string(content))
+			err = ioutil.WriteFile(indexFile, content, 0770)
+			if err != nil {
+				log.Fatal(err)
+			}
+		}
+		if app.Webpack == true {
+			app.RunWebpack()
+		}
 	case "run":
 		defer func() {
 			log.Println("DEFERRING...")
@@ -114,91 +133,6 @@ func main() {
 		run()
 	default:
 		printHelp()
-	}
-}
-
-func jsOud() {
-	var err error
-	var content string
-	app = loadApp()
-	outPath := "static/js/"
-	var debug = false
-	var j int
-	if len(os.Args) > 2 {
-		if os.Args[2] == "debug" {
-			debug = true
-		} else {
-			outPath = os.Args[2]
-			if outPath[:len(outPath)-1] != "/" {
-				outPath += "/"
-			}
-		}
-	}
-	if len(os.Args) == 4 {
-		if os.Args[3] == "debug" {
-			debug = true
-		}
-	}
-
-	backCount := len(strings.Split(outPath, "/")) - 1
-	if debug {
-		//create symbolic links to files
-		var linkPath string
-		var sourcePath string
-		for _, cmp := range app.Components {
-			for i := range cmp.JsFiles {
-				if filepath.Base(cmp.JsFiles[i]) == cmp.Name+".js" {
-					linkPath = outPath + filepath.Base(cmp.JsFiles[i])
-				} else {
-					linkPath = outPath + cmp.Name + "." + filepath.Base(cmp.JsFiles[i])
-				}
-				sourcePath = ""
-				for j = 0; j < backCount; j++ {
-					sourcePath += "../"
-				}
-				sourcePath += cmp.JsFiles[i]
-				if _, err := os.Lstat(linkPath); err == nil {
-					os.Remove(linkPath)
-				}
-				err = os.Symlink(sourcePath, linkPath)
-				if err != nil {
-					fmt.Println("ERROR:", err)
-				}
-			}
-		}
-	} else {
-		//concatinate js files into single file
-		content = ""
-		for _, cmp := range app.Components {
-			if len(cmp.JsFiles) > 0 {
-				content += "\n//component " + cmp.Name + "\n\n"
-			}
-			for i := range cmp.JsFiles {
-				fileContent, err := ioutil.ReadFile(cmp.JsFiles[i])
-				if err != nil {
-					fmt.Println("ERROR:", err)
-					continue
-				}
-				content += string(fileContent) + "\n\n"
-			}
-		}
-		var outfile string
-		if app.Title == "" {
-			outfile = "app.js"
-		} else {
-			outfile = app.Title + ".js"
-		}
-		m := minify.New()
-		m.AddFunc("text/javascript", js.Minify)
-		minified, err := m.String("text/javascript", content)
-		if err != nil {
-			minified = content
-			fmt.Println("ERROR:", err)
-		}
-		err = ioutil.WriteFile(outPath+outfile, []byte(minified), 0770)
-		if err != nil {
-			fmt.Println("ERROR:", err)
-		}
 	}
 }
 func printHelp() {
@@ -231,3 +165,88 @@ func loadApp() components.App {
 	}
 	return app
 }
+
+// func jsOud() {
+// 	var err error
+// 	var content string
+// 	app = loadApp()
+// 	outPath := "static/js/"
+// 	var debug = false
+// 	var j int
+// 	if len(os.Args) > 2 {
+// 		if os.Args[2] == "debug" {
+// 			debug = true
+// 		} else {
+// 			outPath = os.Args[2]
+// 			if outPath[:len(outPath)-1] != "/" {
+// 				outPath += "/"
+// 			}
+// 		}
+// 	}
+// 	if len(os.Args) == 4 {
+// 		if os.Args[3] == "debug" {
+// 			debug = true
+// 		}
+// 	}
+
+// 	backCount := len(strings.Split(outPath, "/")) - 1
+// 	if debug {
+// 		//create symbolic links to files
+// 		var linkPath string
+// 		var sourcePath string
+// 		for _, cmp := range app.Components {
+// 			for i := range cmp.JsFiles {
+// 				if filepath.Base(cmp.JsFiles[i]) == cmp.Name+".js" {
+// 					linkPath = outPath + filepath.Base(cmp.JsFiles[i])
+// 				} else {
+// 					linkPath = outPath + cmp.Name + "." + filepath.Base(cmp.JsFiles[i])
+// 				}
+// 				sourcePath = ""
+// 				for j = 0; j < backCount; j++ {
+// 					sourcePath += "../"
+// 				}
+// 				sourcePath += cmp.JsFiles[i]
+// 				if _, err := os.Lstat(linkPath); err == nil {
+// 					os.Remove(linkPath)
+// 				}
+// 				err = os.Symlink(sourcePath, linkPath)
+// 				if err != nil {
+// 					fmt.Println("ERROR:", err)
+// 				}
+// 			}
+// 		}
+// 	} else {
+// 		//concatinate js files into single file
+// 		content = ""
+// 		for _, cmp := range app.Components {
+// 			if len(cmp.JsFiles) > 0 {
+// 				content += "\n//component " + cmp.Name + "\n\n"
+// 			}
+// 			for i := range cmp.JsFiles {
+// 				fileContent, err := ioutil.ReadFile(cmp.JsFiles[i])
+// 				if err != nil {
+// 					fmt.Println("ERROR:", err)
+// 					continue
+// 				}
+// 				content += string(fileContent) + "\n\n"
+// 			}
+// 		}
+// 		var outfile string
+// 		if app.Title == "" {
+// 			outfile = "app.js"
+// 		} else {
+// 			outfile = app.Title + ".js"
+// 		}
+// 		m := minify.New()
+// 		m.AddFunc("text/javascript", js.Minify)
+// 		minified, err := m.String("text/javascript", content)
+// 		if err != nil {
+// 			minified = content
+// 			fmt.Println("ERROR:", err)
+// 		}
+// 		err = ioutil.WriteFile(outPath+outfile, []byte(minified), 0770)
+// 		if err != nil {
+// 			fmt.Println("ERROR:", err)
+// 		}
+// 	}
+// }

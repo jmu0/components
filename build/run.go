@@ -83,13 +83,15 @@ func watch() {
 				}
 				if checkExtension(event.Name()) {
 					log.Println("Change detected:", strings.Replace(event.Path, wd, "", -1))
-					kill()
 					if filepath.Ext(event.Name()) == ".go" {
+						kill()
 						build()
+						start()
 					} else if filepath.Ext(event.Name()) == ".scss" {
 						buildSass()
+					} else if filepath.Ext(event.Name()) == ".js" && app.Debug == false && app.Webpack == true {
+						app.RunWebpack()
 					}
-					start()
 					reload()
 				}
 			case err := <-w.Error:
