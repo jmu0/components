@@ -56,7 +56,7 @@ func start() {
 
 	log.Println("Starting app...")
 	if err := cmd.Start(); err != nil {
-		log.Fatal(err)
+		log.Fatal("ERROR:", err)
 	}
 	log.Println(stdBuffer.String())
 
