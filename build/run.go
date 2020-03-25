@@ -87,12 +87,16 @@ func watch() {
 						kill()
 						build()
 						start()
+						reload()
 					} else if filepath.Ext(event.Name()) == ".scss" {
 						buildSass()
+						reload()
 					} else if filepath.Ext(event.Name()) == ".js" && app.Debug == false && app.Webpack == true {
-						app.RunWebpack()
+						if event.Name() != app.Title+".js" {
+							app.RunWebpack()
+							reload()
+						}
 					}
-					reload()
 				}
 			case err := <-w.Error:
 				log.Fatalln(err)

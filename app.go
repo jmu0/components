@@ -408,6 +408,7 @@ func (a *App) ScriptTags() string {
 			}
 		} else {
 			ret = "<script src=\"/static/js/index.js\" type=\"module\"></script>\n"
+			ret += "<script src=\"/static/js/reload.socket.js\"></script>\n"
 		}
 	} else {
 		ret = "<script src=\"/static/js/" + a.Title + ".js\"></script>\n"
