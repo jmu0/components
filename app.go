@@ -386,23 +386,28 @@ func (a *App) ScriptTags() string {
 	var i int
 	var html string
 	if a.Debug == true {
-		for _, scriptPath := range a.Scripts {
-			ret += "<script src=\"" + scriptPath + "\""
-			if strings.Contains(scriptPath, "index") == false && strings.Contains(scriptPath, "reload.socket") == false {
-				ret += " type=\"module\""
-			}
-			ret += "></script>\n"
-		}
-		for _, cmp := range a.Components {
-			for i = 0; i < len(cmp.JsFiles); i++ {
-				src = strings.Replace(cmp.JsFiles[i], a.RootPath, "", -1)
-				html = "<script src=\"/" + src + "\""
-				if strings.Contains(src, "index") == false {
-					html += " type=\"module\""
+		if a.Webpack == false {
+
+			for _, scriptPath := range a.Scripts {
+				ret += "<script src=\"" + scriptPath + "\""
+				if strings.Contains(scriptPath, "index") == false && strings.Contains(scriptPath, "reload.socket") == false {
+					ret += " type=\"module\""
 				}
-				html += "></script>\n"
-				ret += html
+				ret += "></script>\n"
 			}
+			for _, cmp := range a.Components {
+				for i = 0; i < len(cmp.JsFiles); i++ {
+					src = strings.Replace(cmp.JsFiles[i], a.RootPath, "", -1)
+					html = "<script src=\"/" + src + "\""
+					if strings.Contains(src, "index") == false {
+						html += " type=\"module\""
+					}
+					html += "></script>\n"
+					ret += html
+				}
+			}
+		} else {
+			ret = "<script src=\"/static/js/index.js\" type=\"module\"></script>\n"
 		}
 	} else {
 		ret = "<script src=\"/static/js/" + a.Title + ".js\"></script>\n"
