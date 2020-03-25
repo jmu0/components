@@ -9,7 +9,9 @@
 - Structure app / nesting components / pages
 - Routing for pages
 - ComponentPath: load components in this path
-- Scripts: array of scripts to load. append to body when in debug mode
+- Debug: true/false
+- Webpack: true/false (use webpack)
+- Scripts: array of scripts to load. append to body when in debug mode, only add index.js when webpack=true
 - concatenate, minify and gzip scripts on server start, serve single js file.
 
 ## components
