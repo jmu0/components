@@ -32,47 +32,19 @@ func build() {
 }
 
 func start() {
-	// netstat -ltnp | grep 8282
-
-	// gofiles, err := filepath.Glob("*.go")
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
-	// args := []string{"run"}
-	// args = append(args, gofiles...)
-	// cmd = exec.Command("go", args...)
-	//kill child processes: cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
-
-	// stdout, err := cmd.StdoutPipe()
-	// if err != nil {
-	// 	log.Println("App error:", err)
-	// }
-
 	cmd = exec.Command("./app")
 	var stdBuffer bytes.Buffer
 	mw := io.MultiWriter(os.Stdout, &stdBuffer)
 	cmd.Stdout = mw
 	cmd.Stderr = mw
-
 	log.Println("Starting app...")
 	if err := cmd.Start(); err != nil {
 		log.Fatal("ERROR:", err)
 	}
 	log.Println(stdBuffer.String())
-
-	// in := bufio.NewScanner(stdout)
-	// for in.Scan() {
-	// 	log.Println("App:", in.Text())
-	// }
-	// if err := in.Err(); err != nil {
-	// 	log.Fatal(err)
-	// }
-
 }
 
 func kill() {
-	// syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
-
 	log.Println("Killing app...")
 	if err := cmd.Process.Kill(); err != nil {
 		log.Fatal("failed to kill process: ", err)
@@ -105,7 +77,6 @@ func watch() {
 		for {
 			select {
 			case event := <-w.Event:
-				// wd, err := dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
 				wd, err := os.Getwd()
 				if err != nil {
 					wd = ""
@@ -158,12 +129,6 @@ func reload() {
 
 func buildSass() {
 	log.Println("Compiling sass:", "sass", app.MainSassFile+":"+app.MainCSSFile)
-
-	// cmd = exec.Command("sass", app.MainSassFile+":"+app.MainCSSFile)
-	// if err := cmd.Run(); err != nil {
-	// 	log.Println(err)
-	// }
-
 	cmd = exec.Command("sass", app.MainSassFile+":"+app.MainCSSFile)
 	var stdBuffer bytes.Buffer
 	mw := io.MultiWriter(os.Stdout, &stdBuffer)
