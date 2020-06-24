@@ -129,6 +129,7 @@ func queryHandler(route Route, conn db.Conn) func(w http.ResponseWriter, r *http
 				return
 			}
 		}
+
 		data, err := route.GetData(r.URL.Path, conn)
 		if err != nil {
 			log.Println("Error handle data:", err)
@@ -180,12 +181,23 @@ func (r *Route) GetData(path string, conn db.Conn) ([]map[string]interface{}, er
 	} else {
 		query = fmt.Sprintf(r.SQL, params...)
 	}
-	res, err := conn.Query(query)
-	if err != nil {
-		return ret, err
+	if strings.ToLower(strings.TrimSpace(query)[:6]) == "select" {
+		res, err := conn.Query(query)
+		if err != nil {
+			return ret, err
+		}
+		if len(res) == 0 {
+			return ret, errors.New("Data not found")
+		}
+		ret = res
+	} else {
+		id, rows, err := conn.Execute(query)
+		if err != nil {
+			return ret, err
+		}
+		ret = append(ret, make(map[string]interface{}))
+		ret[0]["id"] = id
+		ret[0]["n"] = rows
 	}
-	if len(res) == 0 {
-		return ret, errors.New("Data not found")
-	}
-	return res, nil
+	return ret, nil
 }
