@@ -164,16 +164,18 @@ func graphQLhandler(route Route, schema *graphql.Schema) func(w http.ResponseWri
 func (r *Route) GetData(path string, conn db.Conn) ([]map[string]interface{}, error) {
 	var ret = make([]map[string]interface{}, 0)
 	var query, param string
+	params := make([]interface{}, 0)
 	if r.SQL == "" {
 		return ret, nil
 	}
-	spl := strings.Split(path, "/")
-	keys := strings.Split(spl[len(spl)-1], ":")
-	params := make([]interface{}, 0)
-	for i := range keys {
-		param = db.Escape(strings.TrimSpace(keys[i]))
-		if len(param) > 0 {
-			params = append(params, param)
+	if path[len(path)-1:] != "/" {
+		spl := strings.Split(path, "/")
+		keys := strings.Split(spl[len(spl)-1], ":")
+		for i := range keys {
+			param = db.Escape(strings.TrimSpace(keys[i]))
+			if len(param) > 0 {
+				params = append(params, param)
+			}
 		}
 	}
 	if len(params) == 0 {
@@ -187,7 +189,7 @@ func (r *Route) GetData(path string, conn db.Conn) ([]map[string]interface{}, er
 			return ret, err
 		}
 		if len(res) == 0 {
-			return ret, errors.New("Data not found")
+			return ret, errors.New("Data not found: " + path)
 		}
 		ret = res
 	} else {
