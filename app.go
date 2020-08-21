@@ -187,7 +187,7 @@ func (a *App) loadComponentFolder(path string) error {
 	}
 	for _, file := range files {
 		if file.IsDir() {
-			log.Println("DEBUG scanning:", file.Name(), "in", path)
+			// log.Println("DEBUG scanning:", file.Name(), "in", path)
 			err = a.loadComponentFolder(path + "/" + file.Name())
 			if err != nil {
 				return err
@@ -391,7 +391,9 @@ func (a *App) ScriptTags() string {
 			for _, scriptPath := range a.Scripts {
 				ret += "<script src=\"" + scriptPath + "\""
 				if strings.Contains(scriptPath, "index") == false && strings.Contains(scriptPath, "reload.socket") == false {
-					ret += " type=\"module\""
+					if isModule(a.RootPath, scriptPath) == true {
+						ret += " type=\"module\""
+					}
 				}
 				ret += "></script>\n"
 			}
@@ -400,7 +402,9 @@ func (a *App) ScriptTags() string {
 					src = strings.Replace(cmp.JsFiles[i], a.RootPath, "", -1)
 					html = "<script src=\"/" + src + "\""
 					if strings.Contains(src, "index") == false {
-						html += " type=\"module\""
+						if isModule(a.RootPath, cmp.JsFiles[i]) == true {
+							html += " type=\"module\""
+						}
 					}
 					html += "></script>\n"
 					ret += html
@@ -553,4 +557,16 @@ func (a *App) RunWebpack() {
 		log.Fatal("ERROR:", err, "OUTPUT:", string(out))
 	}
 	log.Println("Webpack output:", string(out))
+}
+
+func isModule(rootpath, scriptfile string) bool {
+	if scriptfile[0] == '/' {
+		scriptfile = scriptfile[1:]
+	}
+	scriptPath := rootpath + scriptfile
+	out, err := exec.Command("grep", "^export*", scriptPath).Output()
+	if err == nil && len(out) > 0 {
+		return true
+	}
+	return false
 }
