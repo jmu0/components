@@ -35,7 +35,7 @@ func main() {
 		Conn:       conn,
 		DataFuncs:  make(map[string]components.DataFunc),
 	}
-	app.DataFuncs["example"] = getExampleData
+	// app.DataFuncs["example"] = getExampleData()
 
 	err := app.Init()
 	if err != nil {
